@@ -1,0 +1,260 @@
+openapi: 3.0.3
+info:
+  title: Avito Year in Review API
+  description: API for personalized "Year in Review" recap, Steam-like achievements, and share cards.
+  version: 1.0.0
+
+paths:
+  /api/v1/profiles:
+    get:
+      summary: Get all available test profiles
+      operationId: getProfiles
+      responses:
+        '200':
+          description: List of test user profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserProfile'
+
+  /api/v1/recap/{profileId}:
+    get:
+      summary: Get personalized year recap for a user profile
+      operationId: getRecap
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Personalized recap payload including story cards, AI summary, metrics, and achievements
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecapResponse'
+        '404':
+          description: Profile not found
+
+  /api/v1/achievements/{profileId}:
+    get:
+      summary: Get user achievements with progress and CTA links
+      operationId: getAchievements
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of achievements for Steam-like dashboard
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Achievement'
+
+  /api/v1/share/{shareToken}:
+    get:
+      summary: Get public share card data (privacy compliant)
+      operationId: getShareCard
+      parameters:
+        - name: shareToken
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Public share card payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShareCard'
+
+components:
+  schemas:
+    UserProfile:
+      type: object
+      required:
+        - id
+        - username
+        - full_name
+        - avatar_url
+        - user_type
+        - registered_at
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        full_name:
+          type: string
+        avatar_url:
+          type: string
+        user_type:
+          type: string
+        registered_at:
+          type: string
+          format: date-time
+
+    UserMetrics:
+      type: object
+      required:
+        - total_activities
+        - total_posted
+        - total_sold
+        - total_bought
+        - total_earned
+        - total_saved
+        - top_category
+        - response_speed_sec
+      properties:
+        total_activities:
+          type: integer
+        total_posted:
+          type: integer
+        total_sold:
+          type: integer
+        total_bought:
+          type: integer
+        total_earned:
+          type: number
+        total_saved:
+          type: number
+        top_category:
+          type: string
+        response_speed_sec:
+          type: integer
+
+    RecapCard:
+      type: object
+      required:
+        - id
+        - card_type
+        - title
+        - subtitle
+        - highlight_stat
+        - description
+        - bg_gradient
+        - icon_name
+        - explanation
+      properties:
+        id:
+          type: string
+        card_type:
+          type: string
+        title:
+          type: string
+        subtitle:
+          type: string
+        highlight_stat:
+          type: string
+        description:
+          type: string
+        bg_gradient:
+          type: string
+        icon_name:
+          type: string
+        explanation:
+          type: string
+        cta_text:
+          type: string
+        cta_action:
+          type: string
+
+    Achievement:
+      type: object
+      required:
+        - id
+        - code
+        - name
+        - description
+        - badge_icon
+        - level
+        - current_progress
+        - max_progress
+        - is_unlocked
+        - cta_text
+        - cta_action
+        - explanation
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        badge_icon:
+          type: string
+        level:
+          type: integer
+        current_progress:
+          type: integer
+        max_progress:
+          type: integer
+        is_unlocked:
+          type: boolean
+        cta_text:
+          type: string
+        cta_action:
+          type: string
+        explanation:
+          type: string
+
+    RecapResponse:
+      type: object
+      required:
+        - profile
+        - metrics
+        - ai_summary
+        - cards
+        - achievements
+        - share_token
+      properties:
+        profile:
+          $ref: '#/components/schemas/UserProfile'
+        metrics:
+          $ref: '#/components/schemas/UserMetrics'
+        cards:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecapCard'
+        achievements:
+          type: array
+          items:
+            $ref: '#/components/schemas/Achievement'
+        share_token:
+          type: string
+
+    ShareCard:
+      type: object
+      required:
+        - full_name
+        - avatar_url
+        - archetype
+        - ai_title
+        - top_achievements
+        - top_category
+      properties:
+        full_name:
+          type: string
+        avatar_url:
+          type: string
+        archetype:
+          type: string
+        ai_title:
+          type: string
+        top_achievements:
+          type: array
+          items:
+            type: string
+        top_category:
+          type: string

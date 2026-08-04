@@ -1,0 +1,6 @@
+id,username,full_name,avatar_url,user_type,registered_at
+1,alex_seller,Алексей Смирнов,https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150,seller,2021-03-15T10:00:00Z
+2,maria_buyer,Мария Иванова,https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150,buyer,2022-07-20T14:30:00Z
+3,dmitry_auto,Дмитрий Петров,https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150,auto_enthusiast,2020-01-10T09:15:00Z
+4,elena_home,Елена Ковалева,https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150,home_renovator,2023-02-01T11:45:00Z
+5,ivan_newbie,Иван Морозов,https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150,casual,2024-11-12T16:20:00Z

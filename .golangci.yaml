@@ -13,7 +13,7 @@ linters:
     - misspell
     - unconvert
 
-issues:
-  exclude-dirs:
-    - backend/pkg/api
-    - backend/internal/repository/pg/sqlc
+  exclusions:
+    paths:
+      - backend/pkg/api
+      - backend/internal/repository/pg/sqlc

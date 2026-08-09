@@ -1,6 +1,5 @@
 services:
   postgres:
-    restart: unless-stopped
     image: postgres:16-alpine
     container_name: avitohack-postgres
     env_file:
@@ -21,13 +20,12 @@ services:
       retries: 5
 
   backend:
-    restart: unless-stopped
     build:
       context: .
       dockerfile: backend/Dockerfile
     container_name: avitohack-backend
-    expose:
-      - "${PORT:-8080}"
+    ports:
+      - "${PORT:-8080}:${PORT:-8080}"
     env_file:
       - .env
     environment:
@@ -40,36 +38,19 @@ services:
         condition: service_healthy
 
   frontend:
-    restart: unless-stopped
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
         VITE_API_BASE_URL: "${VITE_API_BASE_URL:-/api/v1}"
     container_name: avitohack-frontend
-    expose:
-      - "80"
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
     env_file:
       - .env
     depends_on:
       - backend
 
-  caddy:
-    image: caddy:alpine
-    container_name: avitohack-caddy
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - frontend
-      - backend
-    restart: unless-stopped
-
 volumes:
   postgres_data:
-  caddy_data:
-  caddy_config:
+

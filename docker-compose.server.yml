@@ -39,18 +39,16 @@ services:
       postgres:
         condition: service_healthy
 
-  frontend:
-    restart: unless-stopped
+  frontend-builder:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
         VITE_API_BASE_URL: "${VITE_API_BASE_URL:-/api/v1}"
-    container_name: avitohack-frontend
-    expose:
-      - "80"
-    env_file:
-      - .env
+    container_name: avitohack-frontend-builder
+    restart: "no"
+    volumes:
+      - frontend_assets:/frontend_assets
     depends_on:
       - backend
 
@@ -62,14 +60,19 @@ services:
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
+      - frontend_assets:/srv:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      - frontend
-      - backend
+      frontend-builder:
+        condition: service_completed_successfully
+      backend:
+        condition: service_started
     restart: unless-stopped
 
 volumes:
   postgres_data:
+  frontend_assets:
   caddy_data:
   caddy_config:
+

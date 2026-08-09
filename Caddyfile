@@ -1,8 +1,14 @@
-omitendo.ru {
-    reverse_proxy frontend:80
+omitendo.ru, :80 {
+    root * /srv
+    encode gzip zstd
 
     handle /api/* {
         reverse_proxy backend:8080
+    }
+
+    handle {
+        try_files {path} /index.html
+        file_server
     }
 
     header {
@@ -15,3 +21,4 @@ omitendo.ru {
         output file /var/log/caddy/access.log
     }
 }
+

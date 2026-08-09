@@ -12,12 +12,10 @@ COPY . .
 
 RUN bun run build
 
-FROM nginx:alpine
+FROM alpine:3.19
 
-COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/dist /app/dist
 
-EXPOSE 80
+CMD ["sh", "-c", "rm -rf /frontend_assets/* && cp -r /app/dist/* /frontend_assets/"]
 
-CMD ["nginx", "-g", "daemon off;"]
 

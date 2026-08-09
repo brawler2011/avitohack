@@ -37,20 +37,39 @@ services:
       postgres:
         condition: service_healthy
 
-  frontend:
+  frontend-builder:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
         VITE_API_BASE_URL: "${VITE_API_BASE_URL:-/api/v1}"
-    container_name: avitohack-frontend
-    ports:
-      - "${FRONTEND_PORT:-3000}:80"
-    env_file:
-      - .env
+    container_name: avitohack-frontend-builder
+    restart: "no"
+    volumes:
+      - frontend_assets:/frontend_assets
     depends_on:
       - backend
 
+  caddy:
+    image: caddy:alpine
+    container_name: avitohack-caddy
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - frontend_assets:/srv:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend-builder:
+        condition: service_completed_successfully
+      backend:
+        condition: service_started
+
 volumes:
   postgres_data:
+  frontend_assets:
+  caddy_data:
+  caddy_config:
+
 

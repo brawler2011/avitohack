@@ -159,7 +159,6 @@ function drawBrushStroke(
     ctx.lineTo(top[i].x, top[i].y);
   }
 
-  const tipTop = top[top.length - 1];
   const tipBottom = bottom[bottom.length - 1];
   const tipX = endX + w * 0.02;
   const tipY = endY + h * 0.01;

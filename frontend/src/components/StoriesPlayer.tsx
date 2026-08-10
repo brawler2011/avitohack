@@ -52,7 +52,7 @@ type OrbConfig = {
 const randomBetween = (min: number, max: number) =>
   min + Math.random() * (max - min);
 
-const createOrbConfigs = (): OrbConfig[] =>
+const createOrbConfigs = (_seed?: number): OrbConfig[] =>
   Array.from({ length: ORB_COUNT }, (_, index) => {
     const sizeRanges = [
       [250, 340],
@@ -111,7 +111,7 @@ export const StoriesPlayer: React.FC<StoriesPlayerProps> = ({
   const currentCard = cards[currentIndex];
   const profileInitials = getProfileInitials(profile.full_name);
 
-  const orbConfigs = useMemo(() => createOrbConfigs(), [currentIndex]);
+  const orbConfigs = useMemo(() => createOrbConfigs(currentIndex), [currentIndex]);
 
   useEffect(() => {
     if (isPaused || !currentCard) return;

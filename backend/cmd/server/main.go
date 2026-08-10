@@ -70,7 +70,15 @@ func main() {
 		}
 	}
 
-	recapSvc := service.NewRecapService(queries)
+	llmGen := service.NewLLMGenerator(cfg.OpenRouterAPIKey, cfg.OpenRouterModel)
+	if llmGen.IsAvailable() {
+		slog.Info("OpenRouter LLM generator initialized", slog.String("model", cfg.OpenRouterModel))
+	} else {
+		slog.Warn("OpenRouter API key is not set. Service will use template fallback.")
+	}
+
+	recapSvc := service.NewRecapService(queries, llmGen)
+	recapSvc.PrewarmRecapCache(context.Background())
 
 	strictHandler := api.NewStrictHandler(recapSvc, nil)
 

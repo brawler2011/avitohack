@@ -11,14 +11,17 @@ import (
 )
 
 type RecapCache struct {
-	ProfileID     int32     `json:"profile_id"`
-	ShareToken    string    `json:"share_token"`
-	AiTitle       string    `json:"ai_title"`
-	AiStory       string    `json:"ai_story"`
-	Archetype     string    `json:"archetype"`
-	GeneratedByAi bool      `json:"generated_by_ai"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ProfileID        int32     `json:"profile_id"`
+	ShareToken       string    `json:"share_token"`
+	AiTitle          string    `json:"ai_title"`
+	AiStory          string    `json:"ai_story"`
+	Archetype        string    `json:"archetype"`
+	GeneratedByAi    bool      `json:"generated_by_ai"`
+	CardsJson        []byte    `json:"cards_json"`
+	AchievementsJson []byte    `json:"achievements_json"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
+
 
 type User struct {
 	ID           int32     `json:"id"`

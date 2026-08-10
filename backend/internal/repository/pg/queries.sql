@@ -33,13 +33,16 @@ SELECT * FROM recap_cache WHERE profile_id = $1;
 SELECT * FROM recap_cache WHERE share_token = $1;
 
 -- name: UpsertRecapCache :one
-INSERT INTO recap_cache (profile_id, share_token, ai_title, ai_story, archetype, generated_by_ai, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, NOW())
+INSERT INTO recap_cache (profile_id, share_token, ai_title, ai_story, archetype, generated_by_ai, cards_json, achievements_json, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
 ON CONFLICT (profile_id) DO UPDATE SET
     share_token = EXCLUDED.share_token,
     ai_title = EXCLUDED.ai_title,
     ai_story = EXCLUDED.ai_story,
     archetype = EXCLUDED.archetype,
     generated_by_ai = EXCLUDED.generated_by_ai,
+    cards_json = EXCLUDED.cards_json,
+    achievements_json = EXCLUDED.achievements_json,
     updated_at = NOW()
 RETURNING *;
+

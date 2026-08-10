@@ -22,7 +22,7 @@ func (q *Queries) DeleteAllActivities(ctx context.Context) error {
 }
 
 const getRecapCacheByProfileID = `-- name: GetRecapCacheByProfileID :one
-SELECT profile_id, share_token, ai_title, ai_story, archetype, generated_by_ai, updated_at FROM recap_cache WHERE profile_id = $1
+SELECT profile_id, share_token, ai_title, ai_story, archetype, generated_by_ai, cards_json, achievements_json, updated_at FROM recap_cache WHERE profile_id = $1
 `
 
 func (q *Queries) GetRecapCacheByProfileID(ctx context.Context, profileID int32) (RecapCache, error) {
@@ -35,13 +35,15 @@ func (q *Queries) GetRecapCacheByProfileID(ctx context.Context, profileID int32)
 		&i.AiStory,
 		&i.Archetype,
 		&i.GeneratedByAi,
+		&i.CardsJson,
+		&i.AchievementsJson,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const getRecapCacheByShareToken = `-- name: GetRecapCacheByShareToken :one
-SELECT profile_id, share_token, ai_title, ai_story, archetype, generated_by_ai, updated_at FROM recap_cache WHERE share_token = $1
+SELECT profile_id, share_token, ai_title, ai_story, archetype, generated_by_ai, cards_json, achievements_json, updated_at FROM recap_cache WHERE share_token = $1
 `
 
 func (q *Queries) GetRecapCacheByShareToken(ctx context.Context, shareToken string) (RecapCache, error) {
@@ -54,10 +56,13 @@ func (q *Queries) GetRecapCacheByShareToken(ctx context.Context, shareToken stri
 		&i.AiStory,
 		&i.Archetype,
 		&i.GeneratedByAi,
+		&i.CardsJson,
+		&i.AchievementsJson,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
+
 
 const getUserActivities = `-- name: GetUserActivities :many
 SELECT id, user_id, timestamp, activity_type, category, title, price, saved_amount, response_time_sec FROM user_activities WHERE user_id = $1 ORDER BY timestamp ASC
@@ -188,25 +193,29 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 }
 
 const upsertRecapCache = `-- name: UpsertRecapCache :one
-INSERT INTO recap_cache (profile_id, share_token, ai_title, ai_story, archetype, generated_by_ai, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, NOW())
+INSERT INTO recap_cache (profile_id, share_token, ai_title, ai_story, archetype, generated_by_ai, cards_json, achievements_json, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
 ON CONFLICT (profile_id) DO UPDATE SET
     share_token = EXCLUDED.share_token,
     ai_title = EXCLUDED.ai_title,
     ai_story = EXCLUDED.ai_story,
     archetype = EXCLUDED.archetype,
     generated_by_ai = EXCLUDED.generated_by_ai,
+    cards_json = EXCLUDED.cards_json,
+    achievements_json = EXCLUDED.achievements_json,
     updated_at = NOW()
-RETURNING profile_id, share_token, ai_title, ai_story, archetype, generated_by_ai, updated_at
+RETURNING profile_id, share_token, ai_title, ai_story, archetype, generated_by_ai, cards_json, achievements_json, updated_at
 `
 
 type UpsertRecapCacheParams struct {
-	ProfileID     int32  `json:"profile_id"`
-	ShareToken    string `json:"share_token"`
-	AiTitle       string `json:"ai_title"`
-	AiStory       string `json:"ai_story"`
-	Archetype     string `json:"archetype"`
-	GeneratedByAi bool   `json:"generated_by_ai"`
+	ProfileID        int32  `json:"profile_id"`
+	ShareToken       string `json:"share_token"`
+	AiTitle          string `json:"ai_title"`
+	AiStory          string `json:"ai_story"`
+	Archetype        string `json:"archetype"`
+	GeneratedByAi    bool   `json:"generated_by_ai"`
+	CardsJson        []byte `json:"cards_json"`
+	AchievementsJson []byte `json:"achievements_json"`
 }
 
 func (q *Queries) UpsertRecapCache(ctx context.Context, arg UpsertRecapCacheParams) (RecapCache, error) {
@@ -217,6 +226,8 @@ func (q *Queries) UpsertRecapCache(ctx context.Context, arg UpsertRecapCachePara
 		arg.AiStory,
 		arg.Archetype,
 		arg.GeneratedByAi,
+		arg.CardsJson,
+		arg.AchievementsJson,
 	)
 	var i RecapCache
 	err := row.Scan(
@@ -226,6 +237,8 @@ func (q *Queries) UpsertRecapCache(ctx context.Context, arg UpsertRecapCachePara
 		&i.AiStory,
 		&i.Archetype,
 		&i.GeneratedByAi,
+		&i.CardsJson,
+		&i.AchievementsJson,
 		&i.UpdatedAt,
 	)
 	return i, err

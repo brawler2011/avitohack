@@ -4,8 +4,11 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strconv"
+	"time"
 
 	"github.com/avitohack/backend/internal/domain"
 	"github.com/avitohack/backend/internal/repository/pg/sqlc"
@@ -14,13 +17,51 @@ import (
 
 type RecapService struct {
 	queries sqlc.Querier
+	llmGen  *LLMGenerator
 }
 
-func NewRecapService(queries sqlc.Querier) *RecapService {
+func NewRecapService(queries sqlc.Querier, llmGen *LLMGenerator) *RecapService {
 	return &RecapService{
 		queries: queries,
+		llmGen:  llmGen,
 	}
 }
+
+func (s *RecapService) PrewarmRecapCache(ctx context.Context) {
+	if s.queries == nil || s.llmGen == nil || !s.llmGen.IsAvailable() {
+		return
+	}
+
+	users, err := s.queries.ListUsers(ctx)
+	if err != nil {
+		slog.Warn("Failed to list users for cache prewarming", slog.Any("error", err))
+		return
+	}
+
+	slog.Info("Starting async LLM recap cache prewarming...", slog.Int("user_count", len(users)))
+
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+		defer cancel()
+
+		for _, u := range users {
+			cache, err := s.queries.GetRecapCacheByProfileID(bgCtx, u.ID)
+			if err == nil && len(cache.CardsJson) > 0 && len(cache.AchievementsJson) > 0 {
+				continue
+			}
+
+			reqObj := api.GetRecapRequestObject{ProfileId: int(u.ID)}
+			_, err = s.GetRecap(bgCtx, reqObj)
+			if err != nil {
+				slog.Warn("Failed to prewarm recap for user", slog.Int("user_id", int(u.ID)), slog.Any("error", err))
+			} else {
+				slog.Info("Successfully prewarmed recap for user", slog.Int("user_id", int(u.ID)), slog.String("username", u.Username))
+			}
+		}
+		slog.Info("Completed recap cache prewarming!")
+	}()
+}
+
 
 var _ api.StrictServerInterface = (*RecapService)(nil)
 
@@ -81,39 +122,75 @@ func (s *RecapService) GetRecap(ctx context.Context, request api.GetRecapRequest
 		actRecords = append(actRecords, ActivityRecord{
 			ActivityType:    act.ActivityType,
 			Category:        act.Category,
+			Title:           act.Title,
 			Price:           price,
 			SavedAmount:     saved,
 			ResponseTimeSec: int(act.ResponseTimeSec),
+			Timestamp:       act.Timestamp,
 		})
 	}
 
 	metrics := CalculateUserMetrics(actRecords)
-	achievements := EvaluateAchievements(metrics)
-
-	// Check recap cache for AI summary and share token
 	shareToken := generateShareToken(user.ID)
-	cache, err := s.queries.GetRecapCacheByProfileID(ctx, user.ID)
 
+	var cards []api.RecapCard
+	var achievements []api.Achievement
 	var aiResult *domain.AISummaryResult
-	if err == nil {
+
+	// Check cache
+	cache, err := s.queries.GetRecapCacheByProfileID(ctx, user.ID)
+	if err == nil && len(cache.CardsJson) > 0 && len(cache.AchievementsJson) > 0 {
 		aiResult = &domain.AISummaryResult{
 			Title:         cache.AiTitle,
 			Story:         cache.AiStory,
 			Archetype:     cache.Archetype,
 			GeneratedByAI: cache.GeneratedByAi,
 		}
-	} else {
-		// Generate summary templates
-		aiResult = domain.GenerateSummary(
-			user.UserType,
-			metrics.TotalSold,
-			metrics.TotalBought,
-			metrics.TotalEarned,
-			metrics.TotalSaved,
-			metrics.TopCategory,
-			metrics.ResponseSpeedSec,
-		)
+		_ = json.Unmarshal(cache.CardsJson, &cards)
+		_ = json.Unmarshal(cache.AchievementsJson, &achievements)
+	}
 
+	// If cache empty, try LLM generator
+	if len(cards) == 0 && s.llmGen != nil && s.llmGen.IsAvailable() {
+		slog.Info("Generating recap using OpenRouter LLM", slog.Int("user_id", int(user.ID)))
+		llmRes, llmErr := s.llmGen.GenerateRecap(ctx, user.FullName, user.UserType, metrics)
+		if llmErr == nil && llmRes != nil {
+			cards = llmRes.Cards
+			achievements = llmRes.Achievements
+			aiResult = &llmRes.AISummary
+
+			cardsJson, _ := json.Marshal(cards)
+			achievementsJson, _ := json.Marshal(achievements)
+
+			_, _ = s.queries.UpsertRecapCache(ctx, sqlc.UpsertRecapCacheParams{
+				ProfileID:        user.ID,
+				ShareToken:       shareToken,
+				AiTitle:          aiResult.Title,
+				AiStory:          aiResult.Story,
+				Archetype:        aiResult.Archetype,
+				GeneratedByAi:    true,
+				CardsJson:        cardsJson,
+				AchievementsJson: achievementsJson,
+			})
+		} else {
+			slog.Warn("OpenRouter generation failed, falling back to static templates", slog.Any("error", llmErr))
+		}
+	}
+
+	// Fallback if still empty
+	if len(cards) == 0 {
+		achievements = EvaluateAchievements(metrics)
+		if aiResult == nil {
+			aiResult = domain.GenerateSummary(
+				user.UserType,
+				metrics.TotalSold,
+				metrics.TotalBought,
+				metrics.TotalEarned,
+				metrics.TotalSaved,
+				metrics.TopCategory,
+				metrics.ResponseSpeedSec,
+			)
+		}
 		if aiResult == nil {
 			aiResult = &domain.AISummaryResult{
 				Title:         "Перспективный Исследователь",
@@ -122,19 +199,22 @@ func (s *RecapService) GetRecap(ctx context.Context, request api.GetRecapRequest
 				GeneratedByAI: false,
 			}
 		}
+		cards = BuildRecapCards(user.FullName, metrics, aiResult.Title, aiResult.Story, aiResult.Archetype, achievements)
 
-		// Save to cache
+		cardsJson, _ := json.Marshal(cards)
+		achievementsJson, _ := json.Marshal(achievements)
+
 		_, _ = s.queries.UpsertRecapCache(ctx, sqlc.UpsertRecapCacheParams{
-			ProfileID:     user.ID,
-			ShareToken:    shareToken,
-			AiTitle:       aiResult.Title,
-			AiStory:       aiResult.Story,
-			Archetype:     aiResult.Archetype,
-			GeneratedByAi: aiResult.GeneratedByAI,
+			ProfileID:        user.ID,
+			ShareToken:       shareToken,
+			AiTitle:          aiResult.Title,
+			AiStory:          aiResult.Story,
+			Archetype:        aiResult.Archetype,
+			GeneratedByAi:    aiResult.GeneratedByAI,
+			CardsJson:        cardsJson,
+			AchievementsJson: achievementsJson,
 		})
 	}
-
-	cards := BuildRecapCards(user.FullName, metrics, aiResult.Title, aiResult.Story, aiResult.Archetype, achievements)
 
 	return api.GetRecap200JSONResponse{
 		Profile: api.UserProfile{
@@ -165,6 +245,16 @@ func (s *RecapService) GetAchievements(ctx context.Context, request api.GetAchie
 	if s.queries == nil {
 		return nil, fmt.Errorf("database connection unavailable")
 	}
+
+	// Check cache first
+	cache, err := s.queries.GetRecapCacheByProfileID(ctx, int32(request.ProfileId))
+	if err == nil && len(cache.AchievementsJson) > 0 {
+		var achievements []api.Achievement
+		if err := json.Unmarshal(cache.AchievementsJson, &achievements); err == nil && len(achievements) > 0 {
+			return api.GetAchievements200JSONResponse(achievements), nil
+		}
+	}
+
 	activities, err := s.queries.GetUserActivities(ctx, int32(request.ProfileId))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get activities: %w", err)
@@ -189,9 +279,11 @@ func (s *RecapService) GetAchievements(ctx context.Context, request api.GetAchie
 		actRecords = append(actRecords, ActivityRecord{
 			ActivityType:    act.ActivityType,
 			Category:        act.Category,
+			Title:           act.Title,
 			Price:           price,
 			SavedAmount:     saved,
 			ResponseTimeSec: int(act.ResponseTimeSec),
+			Timestamp:       act.Timestamp,
 		})
 	}
 
@@ -215,21 +307,35 @@ func (s *RecapService) GetShareCard(ctx context.Context, request api.GetShareCar
 		return nil, fmt.Errorf("user not found")
 	}
 
+	topAchs := []string{}
+	if len(cache.AchievementsJson) > 0 {
+		var achievements []api.Achievement
+		if err := json.Unmarshal(cache.AchievementsJson, &achievements); err == nil {
+			for _, ach := range achievements {
+				if ach.IsUnlocked {
+					topAchs = append(topAchs, ach.Name)
+				}
+			}
+		}
+	}
+
 	activities, _ := s.queries.GetUserActivities(ctx, cache.ProfileID)
 	actRecords := make([]ActivityRecord, 0, len(activities))
 	for _, act := range activities {
 		actRecords = append(actRecords, ActivityRecord{
 			ActivityType: act.ActivityType,
 			Category:     act.Category,
+			Title:        act.Title,
 		})
 	}
 	metrics := CalculateUserMetrics(actRecords)
-	achievements := EvaluateAchievements(metrics)
 
-	topAchs := []string{}
-	for _, ach := range achievements {
-		if ach.IsUnlocked {
-			topAchs = append(topAchs, ach.Name)
+	if len(topAchs) == 0 {
+		achievements := EvaluateAchievements(metrics)
+		for _, ach := range achievements {
+			if ach.IsUnlocked {
+				topAchs = append(topAchs, ach.Name)
+			}
 		}
 	}
 

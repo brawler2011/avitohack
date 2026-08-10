@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/avitohack/backend/pkg/api"
 )
@@ -17,18 +18,28 @@ type UserActivityResult struct {
 	TopCategory      string
 	ResponseSpeedSec int
 	CategoriesMap    map[string]int
+	Searches         []string
+	FavoritesCount   int
+	DeliveriesCount  int
+	ReviewsCount     int
+	NightActivityCnt int
 }
 
 func CalculateUserMetrics(activities []ActivityRecord) UserActivityResult {
 	res := UserActivityResult{
 		TotalActivities: len(activities),
 		CategoriesMap:   make(map[string]int),
+		Searches:        make([]string, 0),
 	}
 
 	var minResponseSpeed int = 999999
 	for _, act := range activities {
 		if act.Category != "" {
 			res.CategoriesMap[act.Category]++
+		}
+
+		if !act.Timestamp.IsZero() && (act.Timestamp.Hour() >= 22 || act.Timestamp.Hour() < 6) {
+			res.NightActivityCnt++
 		}
 
 		switch act.ActivityType {
@@ -40,6 +51,16 @@ func CalculateUserMetrics(activities []ActivityRecord) UserActivityResult {
 		case "item_bought":
 			res.TotalBought++
 			res.TotalSaved += act.SavedAmount
+		case "search":
+			if act.Title != "" {
+				res.Searches = append(res.Searches, act.Title)
+			}
+		case "save_favorite":
+			res.FavoritesCount++
+		case "delivery_sent", "delivery_received":
+			res.DeliveriesCount++
+		case "review_left":
+			res.ReviewsCount++
 		case "chat_received", "chat_sent":
 			if act.ResponseTimeSec > 0 && act.ResponseTimeSec < minResponseSpeed {
 				minResponseSpeed = act.ResponseTimeSec
@@ -68,10 +89,13 @@ func CalculateUserMetrics(activities []ActivityRecord) UserActivityResult {
 type ActivityRecord struct {
 	ActivityType    string
 	Category        string
+	Title           string
 	Price           float64
 	SavedAmount     float64
 	ResponseTimeSec int
+	Timestamp       time.Time
 }
+
 
 func EvaluateAchievements(metrics UserActivityResult) []api.Achievement {
 	achievements := []api.Achievement{}

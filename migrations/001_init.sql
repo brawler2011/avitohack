@@ -29,7 +29,10 @@ CREATE TABLE IF NOT EXISTS recap_cache (
     ai_story TEXT NOT NULL,
     archetype VARCHAR(100) NOT NULL,
     generated_by_ai BOOLEAN NOT NULL DEFAULT FALSE,
+    cards_json JSONB,
+    achievements_json JSONB,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
 
 CREATE INDEX IF NOT EXISTS idx_recap_cache_token ON recap_cache(share_token);

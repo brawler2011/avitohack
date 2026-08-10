@@ -11,6 +11,8 @@ type Config struct {
 	DatabaseURL       string
 	CSVUsersPath      string
 	CSVActivitiesPath string
+	OpenRouterAPIKey  string
+	OpenRouterModel   string
 }
 
 func loadEnvFile() {
@@ -40,11 +42,20 @@ func Load() *Config {
 		csvActivities = "../data/user_activities.csv"
 	}
 
+	openRouterKey := os.Getenv("OPENROUTER_API_KEY")
+	openRouterModel := os.Getenv("OPENROUTER_MODEL")
+	if openRouterModel == "" {
+		openRouterModel = "google/gemini-2.0-flash-001"
+	}
+
 	return &Config{
 		Port:              port,
 		DatabaseURL:       dbURL,
 		CSVUsersPath:      csvUsers,
 		CSVActivitiesPath: csvActivities,
+		OpenRouterAPIKey:  openRouterKey,
+		OpenRouterModel:   openRouterModel,
 	}
 }
+
 

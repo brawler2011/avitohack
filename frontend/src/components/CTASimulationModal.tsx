@@ -1,5 +1,5 @@
 import React from 'react';
-import { ExternalLink, X, CheckCircle2 } from 'lucide-react';
+import { X, CheckCircle2 } from 'lucide-react';
 
 interface CTASimulationModalProps {
   isOpen: boolean;

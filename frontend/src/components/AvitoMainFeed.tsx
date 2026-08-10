@@ -1,5 +1,5 @@
 import React from 'react';
-import { PlayCircle, Trophy, Truck, Search, ChevronUp, Sparkles, Flame } from 'lucide-react';
+import { PlayCircle, Trophy, Truck, Search, ChevronUp } from 'lucide-react';
 
 interface AvitoMainFeedProps {
   onOpenStories: () => void;

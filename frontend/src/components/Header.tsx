@@ -20,7 +20,7 @@ export const Header: React.FC<HeaderProps> = ({
   profiles,
   selectedProfileId,
   onSelectProfile,
-  activeView,
+  activeView: _activeView,
   onChangeView,
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);

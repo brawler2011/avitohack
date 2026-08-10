@@ -51,16 +51,26 @@ export const App: React.FC = () => {
   // Fetch recap when profile changes
   useEffect(() => {
     if (!selectedProfileId) return;
-    setLoading(true);
+    let isMounted = true;
+    Promise.resolve().then(() => {
+      if (isMounted) setLoading(true);
+    });
     fetchRecap(selectedProfileId)
       .then((data) => {
-        setRecapData(data);
-        setLoading(false);
+        if (isMounted) {
+          setRecapData(data);
+          setLoading(false);
+        }
       })
       .catch((err) => {
-        console.error(err);
-        setLoading(false);
+        if (isMounted) {
+          console.error(err);
+          setLoading(false);
+        }
       });
+    return () => {
+      isMounted = false;
+    };
   }, [selectedProfileId]);
 
   const handleOpenCardExplanation = (card: RecapCard) => {

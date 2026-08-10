@@ -12,7 +12,7 @@ interface AchievementsDashboardProps {
 
 export const AchievementsDashboard: React.FC<AchievementsDashboardProps> = ({
   achievements,
-  profile,
+  profile: _profile,
   onSelectCTA,
   onOpenExplanation,
 }) => {

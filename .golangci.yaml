@@ -1,5 +1,3 @@
-version: "2"
-
 run:
   timeout: 5m
 
@@ -13,7 +11,8 @@ linters:
     - misspell
     - unconvert
 
-  exclusions:
-    paths:
-      - backend/pkg/api
-      - backend/internal/repository/pg/sqlc
+issues:
+  exclude-dirs:
+    - pkg/api
+    - internal/repository/pg/sqlc
+

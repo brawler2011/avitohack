@@ -12,6 +12,7 @@ import {
   Rocket,
   Share2,
   Sparkles,
+  Star,
   X,
 } from "lucide-react";
 
@@ -87,6 +88,15 @@ const createOrbConfigs = (): OrbConfig[] =>
     };
   });
 
+const getProfileInitials = (fullName: string) =>
+  fullName
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("") || "A";
+
 export const StoriesPlayer: React.FC<StoriesPlayerProps> = ({
   cards,
   profile,
@@ -99,6 +109,7 @@ export const StoriesPlayer: React.FC<StoriesPlayerProps> = ({
   const [isPaused, setIsPaused] = useState(false);
 
   const currentCard = cards[currentIndex];
+  const profileInitials = getProfileInitials(profile.full_name);
 
   const orbConfigs = useMemo(() => createOrbConfigs(), [currentIndex]);
 
@@ -243,6 +254,49 @@ export const StoriesPlayer: React.FC<StoriesPlayerProps> = ({
     };
   };
 
+  const getTextThemeStyle = (
+    card: RecapCard,
+  ): React.CSSProperties & Record<string, string> => {
+    switch (card.card_type) {
+      case "welcome":
+        return {
+          "--story-accent": "#caffdf",
+          "--story-accent-soft": "rgba(202, 255, 223, 0.14)",
+          "--story-accent-border": "rgba(202, 255, 223, 0.28)",
+        };
+      case "category":
+        return {
+          "--story-accent": "#d9e4ff",
+          "--story-accent-soft": "rgba(217, 228, 255, 0.14)",
+          "--story-accent-border": "rgba(217, 228, 255, 0.28)",
+        };
+      case "finance":
+        return {
+          "--story-accent": "#ffd3e9",
+          "--story-accent-soft": "rgba(255, 211, 233, 0.14)",
+          "--story-accent-border": "rgba(255, 211, 233, 0.28)",
+        };
+      case "achievement":
+        return {
+          "--story-accent": "#fff0ad",
+          "--story-accent-soft": "rgba(255, 240, 173, 0.15)",
+          "--story-accent-border": "rgba(255, 240, 173, 0.30)",
+        };
+      case "cta":
+        return {
+          "--story-accent": "#c1f9ff",
+          "--story-accent-soft": "rgba(193, 249, 255, 0.14)",
+          "--story-accent-border": "rgba(193, 249, 255, 0.28)",
+        };
+      default:
+        return {
+          "--story-accent": "#ffffff",
+          "--story-accent-soft": "rgba(255, 255, 255, 0.12)",
+          "--story-accent-border": "rgba(255, 255, 255, 0.24)",
+        };
+    }
+  };
+
   const getAccentStyle = (card: RecapCard): React.CSSProperties => {
     switch (card.card_type) {
       case "finance":
@@ -290,24 +344,103 @@ export const StoriesPlayer: React.FC<StoriesPlayerProps> = ({
 
   const primaryAction = getPrimaryAction();
 
-  const getHighlightSizeClass = (card: RecapCard) => {
-    switch (card.card_type) {
-      case "finance":
-        return "text-[58px]";
-      case "category":
-        return "text-[52px]";
-      case "achievement":
-        return "text-[52px]";
-      case "cta":
-        return "text-[52px]";
-      case "welcome":
-        return "text-[54px]";
+  const getHeroFontSize = (text: string, card: RecapCard) => {
+    const cleanText = text.trim();
+    const totalLength = cleanText.replace(/\s/g, "").length;
+    const words = cleanText.split(/\s+/).filter(Boolean);
+    const longestWord = words.length
+      ? Math.max(...words.map((word) => word.length))
+      : 0;
+
+    if (card.card_type === "finance") return "58px";
+
+    if (card.card_type === "cta") {
+      if (longestWord >= 12) return "36px";
+      if (longestWord >= 10) return "39px";
+      if (totalLength <= 14) return "50px";
+      if (totalLength <= 20) return "44px";
+      if (totalLength <= 28) return "40px";
+      return "36px";
+    }
+
+    // Сначала страхуем длинные цельные слова.
+    if (longestWord >= 16) return "39px";
+    if (longestWord >= 13) return "44px";
+    if (longestWord >= 11) return "48px";
+
+    // Затем учитываем общую длину фразы.
+    if (totalLength <= 11) return "56px";
+    if (totalLength <= 17) return "52px";
+    if (totalLength <= 23) return "47px";
+    if (totalLength <= 30) return "42px";
+
+    return "37px";
+  };
+
+  const formatMoneyText = (value: string) =>
+    value.replace(/(\d[\d\s]*)(?=\s*₽)/g, (rawNumber) => {
+      const digits = rawNumber.replace(/\s/g, "");
+
+      if (digits.length < 4) return digits;
+
+      return digits.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+    });
+
+  const getTitleFontSize = (text: string) => {
+    const length = text.replace(/\s/g, "").length;
+
+    if (length <= 16) return "34px";
+    if (length <= 24) return "31px";
+    return "28px";
+  };
+
+  const rawDisplayHighlight =
+    currentCard.highlight_stat?.replace(/-/g, "‑") || "";
+
+  const displayHighlight =
+    currentCard.card_type === "finance"
+      ? formatMoneyText(rawDisplayHighlight)
+      : rawDisplayHighlight;
+
+  const displayTitle = currentCard.title.replace(/-/g, "‑");
+
+  const financeStats =
+    currentCard.card_type === "finance"
+      ? currentCard.description
+          .split("\n")
+          .map((line) => {
+            const separatorIndex = line.indexOf(":");
+
+            if (separatorIndex === -1) {
+              return { label: line.trim(), value: "" };
+            }
+
+            return {
+              label: line.slice(0, separatorIndex).trim(),
+              value: formatMoneyText(line.slice(separatorIndex + 1).trim()),
+            };
+          })
+          .filter((item) => item.label)
+      : [];
+
+  const achievementLevel =
+    currentCard.card_type === "achievement"
+      ? currentCard.subtitle.match(/\d+/)?.[0]
+      : undefined;
+
+  const getAchievementTheme = (level?: string) => {
+    switch (level) {
+      case "1":
+        return { tone: "bronze", label: "BRONZE" };
+      case "2":
+        return { tone: "silver", label: "SILVER" };
+      case "3":
       default:
-        return "text-[52px]";
+        return { tone: "gold", label: "GOLD" };
     }
   };
 
-  const displayHighlight = currentCard.highlight_stat?.replace(/-/g, "‑");
+  const achievementTheme = getAchievementTheme(achievementLevel);
 
   return (
     <div className="relative w-full min-h-full flex items-center justify-center p-4 font-sans">
@@ -340,6 +473,7 @@ export const StoriesPlayer: React.FC<StoriesPlayerProps> = ({
         style={{
           ...getGradientStyle(currentCard),
           ...getOrbThemeStyle(currentCard),
+          ...getTextThemeStyle(currentCard),
         }}
         className="relative isolate w-full max-w-[430px] h-[min(680px,calc(100dvh-32px))] overflow-hidden rounded-[30px] text-white shadow-[0_32px_90px_rgba(0,0,0,0.26)] select-none animate-fade-in-up"
         onMouseEnter={() => setIsPaused(true)}
@@ -377,7 +511,11 @@ export const StoriesPlayer: React.FC<StoriesPlayerProps> = ({
 
         <div className="relative z-20 h-full flex flex-col p-5">
           {/* Story progress */}
-          <div className="flex gap-1.5 mb-5">
+          <div
+            className={`flex gap-1.5 ${
+              currentCard.card_type === "cta" ? "mb-3" : "mb-5"
+            }`}
+          >
             {cards.map((_, idx) => (
               <div
                 key={idx}
@@ -402,37 +540,62 @@ export const StoriesPlayer: React.FC<StoriesPlayerProps> = ({
           </div>
 
           {/* Profile header */}
-          <header className="flex items-center gap-3">
-            <img
-              src={profile.avatar_url}
-              alt={profile.full_name}
-              className="w-11 h-11 shrink-0 rounded-full border-2 border-white/80 object-cover shadow-sm"
-            />
+          {currentCard.card_type === "cta" ? (
+            <header className="absolute right-5 top-[48px] z-30 flex items-center justify-end gap-3">
+              <span className="rounded-full bg-black/10 px-2.5 py-1 text-[11px] font-bold text-white/80 backdrop-blur-sm">
+                {currentIndex + 1} / {cards.length}
+              </span>
 
-            <div className="min-w-0">
-              <p className="m-0 truncate text-[14px] font-extrabold leading-tight text-white">
-                {profile.full_name}
-              </p>
-              <p className="m-0 mt-1 truncate text-xs font-medium text-white/70">
-                @{profile.username}
-              </p>
-            </div>
+              {onClose && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  aria-label="Закрыть итоги"
+                  className="grid w-9 h-9 shrink-0 place-items-center rounded-full bg-black/10 text-white transition hover:bg-black/20 active:scale-95"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </header>
+          ) : (
+            <header className="flex items-center gap-3">
+              {profile.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt={profile.full_name}
+                  className="w-11 h-11 shrink-0 rounded-full border-2 border-white/80 object-cover shadow-sm"
+                />
+              ) : (
+                <div className="story-avatar-fallback w-11 h-11 shrink-0 rounded-full border-2 border-white/80 shadow-sm">
+                  {profileInitials}
+                </div>
+              )}
 
-            <span className="ml-auto rounded-full bg-black/10 px-2.5 py-1 text-[11px] font-bold text-white/80 backdrop-blur-sm">
-              {currentIndex + 1} / {cards.length}
-            </span>
+              <div className="min-w-0">
+                <p className="m-0 truncate text-[14px] font-extrabold leading-tight text-white">
+                  {profile.full_name}
+                </p>
+                <p className="m-0 mt-1 truncate text-xs font-medium text-white/70">
+                  @{profile.username}
+                </p>
+              </div>
 
-            {onClose && (
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="Закрыть итоги"
-                className="grid w-9 h-9 shrink-0 place-items-center rounded-full bg-black/10 text-white transition hover:bg-black/20 active:scale-95"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            )}
-          </header>
+              <span className="ml-auto rounded-full bg-black/10 px-2.5 py-1 text-[11px] font-bold text-white/80 backdrop-blur-sm">
+                {currentIndex + 1} / {cards.length}
+              </span>
+
+              {onClose && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  aria-label="Закрыть итоги"
+                  className="grid w-9 h-9 shrink-0 place-items-center rounded-full bg-black/10 text-white transition hover:bg-black/20 active:scale-95"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </header>
+          )}
 
           {/* Invisible navigation zones */}
           <button
@@ -451,33 +614,229 @@ export const StoriesPlayer: React.FC<StoriesPlayerProps> = ({
           />
 
           {/* Content */}
-          <main className="relative z-20 flex min-h-0 flex-1 flex-col justify-start pt-7 pb-3">
+          <main
+            className={`relative z-20 flex min-h-0 flex-1 flex-col justify-start ${currentCard.card_type === "cta" ? "pt-0 pb-3" : "pt-5 pb-3"}`}
+          >
             <div
               style={getAccentStyle(currentCard)}
-              className="mb-4 grid w-11 h-11 shrink-0 place-items-center rounded-2xl border border-white/20 backdrop-blur-sm shadow-[0_10px_30px_rgba(0,0,0,0.10)]"
+              className={`story-feature-icon mb-3.5 grid w-11 h-11 shrink-0 place-items-center rounded-2xl border border-white/20 backdrop-blur-sm shadow-[0_10px_30px_rgba(0,0,0,0.10)] ${currentCard.card_type === "achievement" ? `story-feature-icon--achievement story-feature-icon--${achievementTheme.tone}` : ""}`}
             >
               {getIcon(currentCard.icon_name)}
             </div>
 
-            <p className="m-0 mb-2.5 text-[10px] font-black uppercase tracking-[0.15em] text-white/70">
-              {currentCard.subtitle}
-            </p>
+            <div className="story-kicker-row">
+              <p className="story-kicker">{currentCard.subtitle}</p>
 
-            <h2 className="m-0 max-w-full text-[36px] font-black leading-[0.96] tracking-[-0.04em] text-white [text-wrap:balance]">
-              {currentCard.title}
-            </h2>
+              {currentCard.card_type === "category" && (
+                <span className="story-mini-chip">TOP 1</span>
+              )}
+            </div>
 
-            {currentCard.highlight_stat && (
+            {currentCard.card_type === "cta" && (
               <div
-                className={`mt-5 max-w-full break-words font-black leading-[0.92] tracking-[-0.05em] text-white drop-shadow-[0_10px_24px_rgba(0,0,0,0.13)] [text-wrap:balance] ${getHighlightSizeClass(currentCard)}`}
+                className="story-year-transition"
+                aria-label="Переход от итогов 2024 к новым целям 2025"
               >
-                {displayHighlight}
+                <span className="story-year-transition__year story-year-transition__year--start">
+                  2024
+                </span>
+
+                <div
+                  className="story-year-transition__track"
+                  aria-hidden="true"
+                >
+                  <span className="story-year-transition__track-base" />
+                  <span className="story-year-transition__track-fill" />
+
+                  <span className="story-year-transition__runner">
+                    <span className="story-year-transition__runner-icon">
+                      →
+                    </span>
+                  </span>
+                </div>
+
+                <span className="story-year-transition__year story-year-transition__year--end">
+                  2025
+                </span>
               </div>
             )}
 
-            <p className="m-0 mt-5 max-w-full whitespace-pre-line text-[14px] font-semibold leading-[1.48] text-white/[0.86]">
-              {currentCard.description}
-            </p>
+            <h2
+              className={`story-card-title story-card-title--${currentCard.card_type}`}
+              style={{ fontSize: getTitleFontSize(displayTitle) }}
+            >
+              {displayTitle}
+            </h2>
+
+            {currentCard.card_type === "achievement" ? (
+              <>
+                <div
+                  className={`story-achievement-plate story-achievement-plate--${achievementTheme.tone}`}
+                >
+                  <Award
+                    className={`story-achievement-watermark story-achievement-watermark--${achievementTheme.tone}`}
+                    aria-hidden="true"
+                  />
+
+                  <div className="story-achievement-plate__topline">
+                    <span>ГЛАВНЫЙ ТИТУЛ</span>
+
+                    <div className="story-achievement-plate__meta">
+                      <div
+                        className={`story-achievement-medal story-achievement-medal--${achievementTheme.tone}`}
+                        aria-label={`Награда уровня ${achievementLevel || "3"}`}
+                      >
+                        <span
+                          className="story-achievement-medal__glow"
+                          aria-hidden="true"
+                        />
+                        <Award
+                          className="story-achievement-medal__icon"
+                          aria-hidden="true"
+                        />
+                        <span className="story-achievement-medal__label">
+                          {achievementTheme.label}
+                        </span>
+                      </div>
+
+                      {achievementLevel && (
+                        <span
+                          className={`story-level-chip story-level-chip--${achievementTheme.tone}`}
+                        >
+                          LVL {achievementLevel}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div
+                    className="story-hero-text story-hero-text--achievement"
+                    style={{
+                      fontSize: getHeroFontSize(displayHighlight, currentCard),
+                    }}
+                  >
+                    {displayHighlight}
+                  </div>
+                </div>
+
+                <div
+                  className={`story-copy-panel story-copy-panel--achievement story-copy-panel--${achievementTheme.tone}`}
+                >
+                  <span className="story-copy-panel__mark">✦</span>
+                  <p>{currentCard.description}</p>
+                </div>
+              </>
+            ) : (
+              <>
+                {currentCard.highlight_stat && (
+                  <div
+                    className={`story-hero-text story-hero-text--${currentCard.card_type}`}
+                    style={{
+                      fontSize: getHeroFontSize(displayHighlight, currentCard),
+                    }}
+                  >
+                    {displayHighlight}
+                  </div>
+                )}
+
+                {currentCard.card_type === "finance" ? (
+                  <div className="story-finance-grid">
+                    {financeStats.map((stat, index) => (
+                      <div
+                        key={`${stat.label}-${index}`}
+                        className="story-stat-card"
+                      >
+                        <span className="story-stat-card__number">
+                          {index + 1}
+                        </span>
+                        <span className="story-stat-card__label">
+                          {stat.label}
+                        </span>
+                        <strong className="story-stat-card__value">
+                          {stat.value}
+                        </strong>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <>
+                    <div
+                      className={`story-copy-panel ${
+                        currentCard.card_type === "cta"
+                          ? "story-copy-panel--finale"
+                          : ""
+                      }`}
+                    >
+                      <span className="story-copy-panel__mark">
+                        {currentCard.card_type === "category"
+                          ? "01"
+                          : currentCard.card_type === "cta"
+                            ? "→"
+                            : "✦"}
+                      </span>
+                      <p>{currentCard.description}</p>
+                    </div>
+
+                    {currentCard.card_type === "cta" && (
+                      <div className="story-review-card mt-3 rounded-[18px] bg-white px-3.5 py-3 text-[#17181c] shadow-[0_14px_34px_rgba(0,0,0,0.14)]">
+                        <div className="flex items-center gap-2.5">
+                          {profile.avatar_url ? (
+                            <img
+                              src={profile.avatar_url}
+                              alt={profile.full_name}
+                              className="h-10 w-10 shrink-0 rounded-full border-2 border-[#00aa5b] object-cover shadow-sm"
+                              style={{ width: 40, height: 40 }}
+                            />
+                          ) : (
+                            <div
+                              className="story-avatar-fallback story-review-card__avatar-fallback"
+                              style={{ width: 40, height: 40 }}
+                            >
+                              {profileInitials}
+                            </div>
+                          )}
+
+                          <div className="min-w-0 flex-1">
+                            <p className="m-0 truncate text-[13px] font-black leading-tight text-[#17181c]">
+                              {profile.full_name}
+                            </p>
+                            <p className="m-0 mt-1 truncate text-[10.5px] font-semibold leading-none text-[#8a8f98]">
+                              @{profile.username}
+                            </p>
+                          </div>
+
+                          <span className="rounded-full bg-[#f2f3f5] px-2.5 py-1 text-[12px] font-black text-[#17181c]">
+                            5,0
+                          </span>
+                        </div>
+
+                        <div className="mt-2.5 flex items-center gap-3">
+                          <div
+                            className="story-review-stars flex shrink-0 items-center gap-1"
+                            aria-label="Рейтинг 5 звёзд"
+                          >
+                            {Array.from({ length: 5 }).map((_, starIndex) => (
+                              <Star
+                                key={starIndex}
+                                className="story-review-star h-[17px] w-[17px]"
+                                fill="currentColor"
+                                style={{
+                                  animationDelay: `${starIndex * 120}ms`,
+                                }}
+                              />
+                            ))}
+                          </div>
+
+                          <span className="min-w-0 text-[11px] font-bold leading-[1.25] text-[#4f5359]">
+                            Вы отлично провели этот год на Авито
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            )}
           </main>
 
           {/* Footer */}

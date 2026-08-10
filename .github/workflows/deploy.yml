@@ -71,6 +71,7 @@ jobs:
           script: |
             set -e
             cd ${{ secrets.PROJECT_PATH }}
+            git remote set-url origin https://github.com/brawler2011/avitohack.git
             git fetch origin main
             git reset --hard origin/main
             cat << 'EOF' > .env

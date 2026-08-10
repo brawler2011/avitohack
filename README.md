@@ -1,4 +1,4 @@
-# Avito Year in Review — Итоги Года на Авито (AvitoHack)
+# Avito Year in Review — Итоги Года на Авито
 
 ![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=flat-square&logo=typescript&logoColor=white)
@@ -51,7 +51,7 @@
 ## Структура проекта
 
 ```
-avitohack/
+.
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml          # GitHub Actions CI/CD pipeline (Lint, Test, SSH Deploy)

@@ -1,5 +1,6 @@
-import React from 'react';
-import { PlayCircle, Trophy, Truck, Search, ChevronUp } from 'lucide-react';
+import React from "react";
+import { PlayCircle, Trophy, Truck, Search, ChevronUp } from "lucide-react";
+import "./AvitoMainFeed.css";
 
 interface AvitoMainFeedProps {
   onOpenStories: () => void;
@@ -12,106 +13,111 @@ export const AvitoMainFeed: React.FC<AvitoMainFeedProps> = ({
 }) => {
   const categories = [
     {
-      title: 'Авто',
-      bg: '#f4f5f7',
-      img: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=300&auto=format&fit=crop&q=80',
+      title: "Авто",
+      bg: "#f4f5f7",
+      img: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=300&auto=format&fit=crop&q=80",
     },
     {
-      title: 'Недвижимость',
-      bg: '#f4f5f7',
-      img: 'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=300&auto=format&fit=crop&q=80',
+      title: "Недвижимость",
+      bg: "#f4f5f7",
+      img: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=300&auto=format&fit=crop&q=80",
     },
     {
-      title: 'Жильё для путешествия',
-      bg: '#f4f5f7',
-      img: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=300&auto=format&fit=crop&q=80',
+      title: "Жильё для путешествия",
+      bg: "#f4f5f7",
+      img: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=300&auto=format&fit=crop&q=80",
     },
     {
-      title: 'Для дома и дачи',
-      bg: '#f4f5f7',
-      img: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=300&auto=format&fit=crop&q=80',
+      title: "Для дома и дачи",
+      bg: "#f4f5f7",
+      img: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=300&auto=format&fit=crop&q=80",
     },
     {
-      title: 'Запчасти',
-      bg: '#f4f5f7',
-      img: 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=300&auto=format&fit=crop&q=80',
+      title: "Запчасти",
+      bg: "#f4f5f7",
+      img: "https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=300&auto=format&fit=crop&q=80",
     },
     {
-      title: 'Услуги',
-      bg: '#f4f5f7',
-      img: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&auto=format&fit=crop&q=80',
+      title: "Услуги",
+      bg: "#f4f5f7",
+      img: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&auto=format&fit=crop&q=80",
     },
     {
-      title: 'Электроника',
-      bg: '#f4f5f7',
-      img: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&auto=format&fit=crop&q=80',
+      title: "Электроника",
+      bg: "#f4f5f7",
+      img: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&auto=format&fit=crop&q=80",
     },
     {
-      title: 'Работа и подработка',
-      bg: '#f4f5f7',
-      img: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=300&auto=format&fit=crop&q=80',
+      title: "Работа и подработка",
+      bg: "#f4f5f7",
+      img: "https://images.unsplash.com/photo-1521791136064-7986c2920216?w=300&auto=format&fit=crop&q=80",
     },
     {
-      title: 'Бизнес 360',
-      bg: '#f4f5f7',
-      img: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=300&auto=format&fit=crop&q=80',
+      title: "Бизнес 360",
+      bg: "#f4f5f7",
+      img: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=300&auto=format&fit=crop&q=80",
     },
     {
-      title: 'Одежда, обувь, аксессуары',
-      bg: '#f4f5f7',
-      img: 'https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=300&auto=format&fit=crop&q=80',
+      title: "Одежда, обувь, аксессуары",
+      bg: "#f4f5f7",
+      img: "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=300&auto=format&fit=crop&q=80",
     },
   ];
 
   const businessSubitems = [
-    { title: 'Оборудование', icon: '⚙️' },
-    { title: 'Помещения', icon: '🏢' },
-    { title: 'Товары', icon: '📦' },
-    { title: 'Транспорт', icon: '🚚' },
-    { title: 'Услуги', icon: '🛠️' },
-    { title: 'Сотрудники', icon: '👥' },
+    { title: "Оборудование", icon: "⚙️" },
+    { title: "Помещения", icon: "🏢" },
+    { title: "Товары", icon: "📦" },
+    { title: "Транспорт", icon: "🚚" },
+    { title: "Услуги", icon: "🛠️" },
+    { title: "Сотрудники", icon: "👥" },
   ];
 
   const feedItems = [
     {
       id: 1,
-      title: 'Декоративный синий поднос (ручная работа)',
-      price: '1 500 ₽',
-      location: 'Москва, р-н ЦАО',
-      date: 'Сегодня, 14:20',
-      image: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=400&auto=format&fit=crop&q=80',
+      title: "Декоративный синий поднос (ручная работа)",
+      price: "1 500 ₽",
+      location: "Москва, р-н ЦАО",
+      date: "Сегодня, 14:20",
+      image:
+        "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=400&auto=format&fit=crop&q=80",
     },
     {
       id: 2,
-      title: 'Кроссовки Nike Air Jordan 1 Retro High',
-      price: '8 900 ₽',
-      location: 'Москва, р-н Тверской',
-      date: 'Сегодня, 13:05',
-      image: 'https://images.unsplash.com/photo-1552346154-21d32810aba3?w=400&auto=format&fit=crop&q=80',
+      title: "Кроссовки Nike Air Jordan 1 Retro High",
+      price: "8 900 ₽",
+      location: "Москва, р-н Тверской",
+      date: "Сегодня, 13:05",
+      image:
+        "https://images.unsplash.com/photo-1552346154-21d32810aba3?w=400&auto=format&fit=crop&q=80",
     },
     {
       id: 3,
-      title: 'Настенное панно с орнаментом Red Art',
-      price: '3 200 ₽',
-      location: 'Москва, р-н Арбат',
-      date: 'Вчера, 19:40',
-      image: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=400&auto=format&fit=crop&q=80',
+      title: "Настенное панно с орнаментом Red Art",
+      price: "3 200 ₽",
+      location: "Москва, р-н Арбат",
+      date: "Вчера, 19:40",
+      image:
+        "https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=400&auto=format&fit=crop&q=80",
     },
     {
       id: 4,
-      title: 'Тренажер силовая скамья Kettler',
-      price: '24 000 ₽',
-      location: 'Москва, р-н Хамовники',
-      date: 'Вчера, 18:12',
-      image: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=400&auto=format&fit=crop&q=80',
+      title: "Тренажер силовая скамья Kettler",
+      price: "24 000 ₽",
+      location: "Москва, р-н Хамовники",
+      date: "Вчера, 18:12",
+      image:
+        "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=400&auto=format&fit=crop&q=80",
     },
     {
       id: 5,
-      title: 'Ноутбук Apple MacBook Air 13 M2 8/256GB',
-      price: '89 000 ₽',
-      location: 'Москва, р-н Пресненский',
-      date: 'Сегодня, 09:15',
-      image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&auto=format&fit=crop&q=80',
+      title: "Ноутбук Apple MacBook Air 13 M2 8/256GB",
+      price: "89 000 ₽",
+      location: "Москва, р-н Пресненский",
+      date: "Сегодня, 09:15",
+      image:
+        "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&auto=format&fit=crop&q=80",
     },
   ];
 
@@ -137,26 +143,33 @@ export const AvitoMainFeed: React.FC<AvitoMainFeedProps> = ({
             </span>
           </div>
 
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-extrabold text-[#222222]">
-                  Ваши итоги 2024 года на Авито 🌟
-                </h2>
-              </div>
-              <p className="text-xs text-[#757575] mt-0.5">
-                Смотрите ваши персональные итоги, узнайте свой статус и достижения за этот год!
-              </p>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-extrabold text-[#222222]">
+                Ваши итоги 2024 года на Авито 🌟
+              </h2>
             </div>
+            <p className="text-xs text-[#757575] mt-0.5">
+              Смотрите ваши персональные итоги, узнайте свой статус и достижения
+              за этот год!
+            </p>
+          </div>
         </div>
 
         {/* Action Buttons */}
         <div className="flex items-center gap-3 shrink-0 w-full md:w-auto">
           <button
+            type="button"
             onClick={onOpenStories}
-            className="flex-1 md:flex-initial flex items-center justify-center gap-2 bg-[#00aa5b] hover:bg-[#009650] text-white font-extrabold text-xs px-5 py-2.5 rounded-xl transition-all shadow-sm animate-bounce hover:animate-none"
+            className="recap-entry-button flex-1 md:flex-initial"
           >
-            <PlayCircle className="w-4 h-4" />
-            <span>Смотреть итоги</span>
+            <span className="recap-entry-button__shine" aria-hidden="true" />
+
+            <span className="recap-entry-button__icon" aria-hidden="true">
+              <PlayCircle className="w-4 h-4" />
+            </span>
+
+            <span className="recap-entry-button__label">Смотреть итоги</span>
           </button>
           <button
             onClick={onOpenAchievements}

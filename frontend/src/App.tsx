@@ -1,25 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   UserProfile,
   RecapResponse,
   RecapCard,
   fetchProfiles,
   fetchRecap,
-} from './api/client';
-import { Header } from './components/Header';
-import { StoriesPlayer } from './components/StoriesPlayer';
-import { AchievementsDashboard } from './components/AchievementsDashboard';
-import { AvitoMainFeed } from './components/AvitoMainFeed';
-import { ExplanationModal } from './components/ExplanationModal';
-import { ShareCardModal } from './components/ShareCardModal';
-import { CTASimulationModal } from './components/CTASimulationModal';
-import { Loader2 } from 'lucide-react';
+} from "./api/client";
+import { Header } from "./components/Header";
+import { StoriesPlayer } from "./components/StoriesPlayer";
+import { AchievementsDashboard } from "./components/AchievementsDashboard";
+import { AvitoMainFeed } from "./components/AvitoMainFeed";
+import { ExplanationModal } from "./components/ExplanationModal";
+import { ShareCardModal } from "./components/ShareCardModal";
+import { CTASimulationModal } from "./components/CTASimulationModal";
+import { Loader2 } from "lucide-react";
+import { RecapReveal } from "./components/recap/RecapReveal";
 
 export const App: React.FC = () => {
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<number>(1);
   const [recapData, setRecapData] = useState<RecapResponse | null>(null);
-  const [activeView, setActiveView] = useState<'feed' | 'stories' | 'achievements'>('feed');
+  const [activeView, setActiveView] = useState<
+    "feed" | "stories" | "achievements"
+  >("feed");
   const [loading, setLoading] = useState<boolean>(true);
 
   // Modal states
@@ -27,14 +30,14 @@ export const App: React.FC = () => {
     isOpen: boolean;
     title: string;
     explanation: string;
-  }>({ isOpen: false, title: '', explanation: '' });
+  }>({ isOpen: false, title: "", explanation: "" });
 
   const [isShareOpen, setIsShareOpen] = useState(false);
 
   const [ctaModalData, setCtaModalData] = useState<{
     isOpen: boolean;
     url: string;
-  }>({ isOpen: false, url: '' });
+  }>({ isOpen: false, url: "" });
 
   // Initial fetch profiles
   useEffect(() => {
@@ -81,7 +84,10 @@ export const App: React.FC = () => {
     });
   };
 
-  const handleOpenAchievementExplanation = (explanation: string, title: string) => {
+  const handleOpenAchievementExplanation = (
+    explanation: string,
+    title: string,
+  ) => {
     setExplanationData({
       isOpen: true,
       title: `Достижение: ${title}`,
@@ -90,7 +96,7 @@ export const App: React.FC = () => {
   };
 
   const handleSelectCTA = (action: string) => {
-    if (action === 'share') {
+    if (action === "share") {
       setIsShareOpen(true);
     } else {
       setCtaModalData({ isOpen: true, url: action });
@@ -116,28 +122,34 @@ export const App: React.FC = () => {
             </p>
           </div>
         ) : recapData ? (
-          activeView === 'feed' ? (
-            <AvitoMainFeed
-              onOpenStories={() => setActiveView('stories')}
-              onOpenAchievements={() => setActiveView('achievements')}
-            />
-          ) : activeView === 'stories' ? (
-            <StoriesPlayer
-              cards={recapData.cards}
-              profile={recapData.profile}
-              onSelectCTA={handleSelectCTA}
-              onOpenExplanation={handleOpenCardExplanation}
-              onOpenShareModal={() => setIsShareOpen(true)}
-              onClose={() => setActiveView('feed')}
-            />
-          ) : (
-            <AchievementsDashboard
-              achievements={recapData.achievements}
-              profile={recapData.profile}
-              onSelectCTA={handleSelectCTA}
-              onOpenExplanation={handleOpenAchievementExplanation}
-            />
-          )
+          <>
+            {activeView === "achievements" ? (
+              <AchievementsDashboard
+                achievements={recapData.achievements}
+                profile={recapData.profile}
+                onSelectCTA={handleSelectCTA}
+                onOpenExplanation={handleOpenAchievementExplanation}
+              />
+            ) : (
+              <AvitoMainFeed
+                onOpenStories={() => setActiveView("stories")}
+                onOpenAchievements={() => setActiveView("achievements")}
+              />
+            )}
+
+            {activeView === "stories" && (
+              <RecapReveal hue={150} onClose={() => setActiveView("feed")}>
+                <StoriesPlayer
+                  cards={recapData.cards}
+                  profile={recapData.profile}
+                  onSelectCTA={handleSelectCTA}
+                  onOpenExplanation={handleOpenCardExplanation}
+                  onOpenShareModal={() => setIsShareOpen(true)}
+                  onClose={() => setActiveView("feed")}
+                />
+              </RecapReveal>
+            )}
+          </>
         ) : (
           <div className="text-center py-20 text-[#757575]">
             Ошибка загрузки данных профиля.
@@ -150,7 +162,9 @@ export const App: React.FC = () => {
         isOpen={explanationData.isOpen}
         title={explanationData.title}
         explanation={explanationData.explanation}
-        onClose={() => setExplanationData((prev) => ({ ...prev, isOpen: false }))}
+        onClose={() =>
+          setExplanationData((prev) => ({ ...prev, isOpen: false }))
+        }
       />
 
       {recapData && (
@@ -164,7 +178,7 @@ export const App: React.FC = () => {
       <CTASimulationModal
         isOpen={ctaModalData.isOpen}
         actionUrl={ctaModalData.url}
-        onClose={() => setCtaModalData({ isOpen: false, url: '' })}
+        onClose={() => setCtaModalData({ isOpen: false, url: "" })}
       />
     </div>
   );

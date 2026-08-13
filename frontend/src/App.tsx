@@ -123,19 +123,22 @@ export const App: React.FC = () => {
     });
   };
 
-  const handleSelectProfile = (profileId: number) => {
-    setActiveView("feed");
+  useEffect(() => {
+    if (!selectedProfileId) return;
 
-    const alreadyViewed = viewedProfileIds.includes(profileId);
+    const alreadyViewed = viewedProfileIds.includes(selectedProfileId);
     const alreadySawOnboarding =
-      readStoredProfileIds(ONBOARDING_SEEN_KEY).includes(profileId);
+      readStoredProfileIds(ONBOARDING_SEEN_KEY).includes(selectedProfileId);
 
     if (!alreadyViewed && !alreadySawOnboarding) {
-      setOnboardingProfileId(profileId);
+      setOnboardingProfileId(selectedProfileId);
     } else {
       setOnboardingProfileId(null);
     }
+  }, [selectedProfileId, viewedProfileIds]);
 
+  const handleSelectProfile = (profileId: number) => {
+    setActiveView("feed");
     if (profileId !== selectedProfileId) {
       setSelectedProfileId(profileId);
     }

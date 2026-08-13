@@ -53,9 +53,9 @@ export const App: React.FC = () => {
     "feed" | "stories" | "achievements"
   >("feed");
   const [loading, setLoading] = useState<boolean>(true);
-  const [onboardingProfileId, setOnboardingProfileId] = useState<number | null>(
-    null,
-  );
+  const [seenOnboardingProfileIds, setSeenOnboardingProfileIds] = useState<
+    number[]
+  >(() => readStoredProfileIds(ONBOARDING_SEEN_KEY));
   const [viewedProfileIds, setViewedProfileIds] = useState<number[]>(() =>
     readStoredProfileIds(RECAP_VIEWED_KEY),
   );
@@ -123,19 +123,13 @@ export const App: React.FC = () => {
     });
   };
 
-  useEffect(() => {
-    if (!selectedProfileId) return;
-
-    const alreadyViewed = viewedProfileIds.includes(selectedProfileId);
-    const alreadySawOnboarding =
-      readStoredProfileIds(ONBOARDING_SEEN_KEY).includes(selectedProfileId);
-
-    if (!alreadyViewed && !alreadySawOnboarding) {
-      setOnboardingProfileId(selectedProfileId);
-    } else {
-      setOnboardingProfileId(null);
-    }
-  }, [selectedProfileId, viewedProfileIds]);
+  const markOnboardingSeen = (profileId: number) => {
+    addStoredProfileId(ONBOARDING_SEEN_KEY, profileId);
+    setSeenOnboardingProfileIds((prev) => {
+      if (prev.includes(profileId)) return prev;
+      return [...prev, profileId];
+    });
+  };
 
   const handleSelectProfile = (profileId: number) => {
     setActiveView("feed");
@@ -146,25 +140,30 @@ export const App: React.FC = () => {
 
   const handleOpenStories = () => {
     markRecapViewed(selectedProfileId);
-    setOnboardingProfileId(null);
+    markOnboardingSeen(selectedProfileId);
     setActiveView("stories");
   };
 
   const handleDismissOnboarding = () => {
-    setOnboardingProfileId(null);
+    markOnboardingSeen(selectedProfileId);
   };
 
+  const alreadyViewed = viewedProfileIds.includes(selectedProfileId);
+  const alreadySawOnboarding =
+    seenOnboardingProfileIds.includes(selectedProfileId);
+
   const isOnboardingOpen =
-    onboardingProfileId === selectedProfileId &&
+    !alreadyViewed &&
+    !alreadySawOnboarding &&
     !loading &&
     recapData?.profile.id === selectedProfileId &&
     activeView === "feed";
 
   useEffect(() => {
-    if (isOnboardingOpen && onboardingProfileId !== null) {
-      addStoredProfileId(ONBOARDING_SEEN_KEY, onboardingProfileId);
+    if (isOnboardingOpen && selectedProfileId) {
+      addStoredProfileId(ONBOARDING_SEEN_KEY, selectedProfileId);
     }
-  }, [isOnboardingOpen, onboardingProfileId]);
+  }, [isOnboardingOpen, selectedProfileId]);
 
   const handleOpenCardExplanation = (card: RecapCard) => {
     setExplanationData({

@@ -38,7 +38,6 @@
   }
 }
 
-/* Minimal translucent side navigation */
 .story-side-nav {
   position: absolute;
   top: 50%;
@@ -117,10 +116,6 @@
   }
 }
 
-/* ─────────────────────────────────────────────────────────────
-   Recap typography system
-   ───────────────────────────────────────────────────────────── */
-
 .story-kicker-row {
   display: flex;
   min-height: 22px;
@@ -196,10 +191,6 @@
   word-break: normal;
   hyphens: none;
 
-  /*
-    Двухцветный срез проходит через каждую букву:
-    верх белый, нижняя часть — цвет конкретной карточки.
-  */
   background: linear-gradient(
     180deg,
     #ffffff 0%,
@@ -613,7 +604,6 @@
   margin-top: 14px;
 }
 
-/* Final rating card */
 .story-review-card {
   position: relative;
   z-index: 2;
@@ -668,7 +658,6 @@
   }
 }
 
-/* Финальная карточка чуть плотнее по вертикали */
 .story-card-title--cta {
   margin-top: -1px;
 }
@@ -677,7 +666,6 @@
   margin-top: 10px;
 }
 
-/* ===== Achievement v11 ===== */
 .story-feature-icon--achievement {
   position: relative;
   overflow: hidden;
@@ -969,10 +957,6 @@
   }
 }
 
-/* ══════════════════════════════════════════════════════════════
-   Stories polish v12 — denser, more informative card bodies
-   ══════════════════════════════════════════════════════════════ */
-
 .story-card-main--welcome .story-hero-text,
 .story-card-main--category .story-hero-text,
 .story-card-main--finance .story-hero-text {
@@ -1206,7 +1190,6 @@
   white-space: nowrap;
 }
 
-/* Finance: show where the result came from, using the real two values */
 .story-finance-breakdown {
   margin-top: 11px;
   padding: 11px 12px 12px;
@@ -1530,10 +1513,6 @@
     padding-bottom: 9px;
   }
 }
-
-/* ══════════════════════════════════════════════════════════════
-   Stories polish v13 — larger lower panels + refined progress
-   ══════════════════════════════════════════════════════════════ */
 
 .story-welcome-insight {
   margin-top: 20px;
@@ -1880,15 +1859,6 @@
   }
 }
 
-/* ══════════════════════════════════════════════════════════════
-   Stories polish v14 — achievement alignment fixes
-   ══════════════════════════════════════════════════════════════ */
-
-/*
-  Большая плашка достижения не должна сжиматься flex-контейнером.
-  В v13 увеличенные нижние блоки могли сдавить её по высоте,
-  из-за чего вторая строка названия визуально обрезалась.
-*/
 .story-card-main--achievement .story-achievement-plate {
   flex-shrink: 0;
   padding-bottom: 17px;
@@ -1901,7 +1871,6 @@
   line-height: 0.94;
 }
 
-/* Выравниваем маленькую GOLD / SILVER / BRONZE медаль в верхней части. */
 .story-achievement-medal {
   min-height: 27px;
   justify-content: center;
@@ -1919,16 +1888,11 @@
   transform: translateY(0.5px);
 }
 
-/*
-  Линия прогресса всегда находится ПОД кружками.
-  И базовая линия, и заполненная часть лежат на z-index: 0.
-*/
 .story-achievement-tier__track::before,
 .story-achievement-tier__track::after {
   z-index: 0;
 }
 
-/* Шаги и кружки находятся поверх обеих линий. */
 .story-achievement-tier__step {
   z-index: 2;
 }
@@ -1939,10 +1903,6 @@
   isolation: isolate;
 }
 
-/*
-  Даём кружкам непрозрачную подложку, чтобы линия физически
-  не была видна внутри них.
-*/
 .story-achievement-tier__step .story-achievement-tier__dot {
   background: rgba(202, 111, 61, 0.92);
   box-shadow:
@@ -1956,7 +1916,6 @@
     var(--story-achievement-soft, rgba(255, 255, 255, 0.12));
 }
 
-/* Текущая полученная медаль — самый верхний и самый заметный слой. */
 .story-achievement-tier__step.is-current {
   z-index: 4;
 }
@@ -1981,10 +1940,6 @@
     0 0 23px var(--story-achievement-glow, rgba(255, 220, 110, 0.34));
 }
 
-/*
-  На небольших экранах сохраняем место, но не разрешаем
-  achievement plate снова схлопнуться.
-*/
 @media (max-height: 720px) {
   .story-card-main--achievement .story-achievement-plate {
     flex-shrink: 0;
@@ -1998,15 +1953,6 @@
   }
 }
 
-/* ══════════════════════════════════════════════════════════════
-   Stories polish v15 — hide tier line behind medal circles
-   ══════════════════════════════════════════════════════════════ */
-
-/*
-  Линия физически проходит под кругами, но раньше просвечивала
-  через их полупрозрачный background. Теперь у каждого круга есть
-  непрозрачная маска чуть больше самого кружка.
-*/
 .story-achievement-tier__dot {
   position: relative;
   z-index: 3;
@@ -2020,20 +1966,16 @@
   inset: -3px;
   border-radius: 999px;
 
-  /* Цвет подложки подобран под achievement-card,
-     чтобы полностью перекрыть линию под кружком. */
   background: #df8057;
 
   pointer-events: none;
 }
 
-/* Для текущего уровня маска чуть больше, потому что сам круг крупнее. */
 .story-achievement-tier__step.is-current .story-achievement-tier__dot::before {
   inset: -4px;
   background: #e28757;
 }
 
-/* Сами кружки делаем непрозрачными — линия больше не может просвечивать. */
 .story-achievement-tier__step .story-achievement-tier__dot {
   background: #d97852;
 }
@@ -2058,14 +2000,6 @@
     linear-gradient(145deg, var(--story-achievement-core, #ffe694), #e39a50);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   Stories polish v16 — clearer achievement tiers + footer space
-   ══════════════════════════════════════════════════════════════ */
-
-/*
-  На achievement-карточке чуть собираем вертикальный ритм,
-  чтобы шкала не прижималась к кнопке объяснения.
-*/
 .story-card-main--achievement {
   padding-top: 12px !important;
   padding-bottom: 4px !important;
@@ -2089,18 +2023,12 @@
   padding-bottom: 11px;
 }
 
-/* Небольшой безопасный зазор перед footer-кнопками. */
 .story-card-main--achievement + footer {
   position: relative;
   z-index: 21;
   padding-top: 8px;
 }
 
-/*
-  Неполученные уровни — нейтральные и читаемые.
-  Полученные — реальные bronze / silver / gold, чтобы круги
-  не терялись на оранжевом фоне карточки.
-*/
 .story-achievement-tier__step .story-achievement-tier__dot {
   color: rgba(255, 255, 255, 0.8);
   border-color: rgba(255, 255, 255, 0.34);
@@ -2110,7 +2038,6 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
-/* Маска под кругом остаётся непрозрачной — линия не просвечивает. */
 .story-achievement-tier__dot::before {
   background: #df8057;
 }

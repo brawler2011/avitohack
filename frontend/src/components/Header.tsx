@@ -23,9 +23,17 @@ export const Header: React.FC<HeaderProps> = ({
   activeView: _activeView,
   onChangeView,
 }) => {
+  const [searchQuery, setSearchQuery] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const currentProfile = profiles.find((p) => p.id === selectedProfileId);
+
+  const handleSearch = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmed = searchQuery.trim();
+    if (!trimmed) return;
+    window.open(`https://www.avito.ru/all?q=${encodeURIComponent(trimmed)}`, '_blank', 'noopener,noreferrer');
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -66,22 +74,26 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
 
         {/* Search Bar with Cyan Blue Border & Search Button */}
-        <div className="flex-1 max-w-2xl flex items-center">
+        <form onSubmit={handleSearch} className="flex-1 max-w-2xl flex items-center">
           <div className="relative w-full flex items-center border-2 border-[#00a0ff] rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-[#00a0ff]/20">
             <div className="pl-3 text-[#757575]">
               <Search className="w-4 h-4" />
             </div>
             <input
               type="text"
-              readOnly
-              value="Поиск по объявлениям и итогам 2024..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Поиск по объявлениям..."
               className="w-full bg-white py-2 px-2 text-sm text-[#222222] placeholder-[#757575] focus:outline-none"
             />
-            <button className="bg-[#00a0ff] hover:bg-[#0088d6] text-white px-6 py-2 font-extrabold text-sm flex items-center gap-1.5 transition-colors shrink-0">
+            <button
+              type="submit"
+              className="bg-[#00a0ff] hover:bg-[#0088d6] text-white px-6 py-2 font-extrabold text-sm flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer"
+            >
               <span>Найти</span>
             </button>
           </div>
-        </div>
+        </form>
 
         {/* Current User Profile Display with Account Switcher Dropdown */}
         <div className="relative shrink-0 border-l border-[#e5e7eb] pl-3" ref={dropdownRef}>

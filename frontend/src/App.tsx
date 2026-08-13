@@ -15,6 +15,35 @@ import { ShareCardModal } from "./components/ShareCardModal";
 import { CTASimulationModal } from "./components/CTASimulationModal";
 import { Loader2 } from "lucide-react";
 import { RecapReveal } from "./components/recap/RecapReveal";
+import { RecapOnboarding } from "./components/RecapOnboarding";
+
+const ONBOARDING_SEEN_KEY = "recap-onboarding-seen-profiles";
+const RECAP_VIEWED_KEY = "recap-viewed-profiles";
+
+const readStoredProfileIds = (key: string): number[] => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((value): value is number => typeof value === "number")
+      : [];
+  } catch {
+    return [];
+  }
+};
+
+const addStoredProfileId = (key: string, profileId: number) => {
+  try {
+    const ids = readStoredProfileIds(key);
+    if (!ids.includes(profileId)) {
+      localStorage.setItem(key, JSON.stringify([...ids, profileId]));
+    }
+  } catch {
+    // Если localStorage недоступен, UI продолжит работать в текущей сессии.
+  }
+};
 
 export const App: React.FC = () => {
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
@@ -24,6 +53,12 @@ export const App: React.FC = () => {
     "feed" | "stories" | "achievements"
   >("feed");
   const [loading, setLoading] = useState<boolean>(true);
+  const [seenOnboardingProfileIds, setSeenOnboardingProfileIds] = useState<
+    number[]
+  >(() => readStoredProfileIds(ONBOARDING_SEEN_KEY));
+  const [viewedProfileIds, setViewedProfileIds] = useState<number[]>(() =>
+    readStoredProfileIds(RECAP_VIEWED_KEY),
+  );
 
   // Modal states
   const [explanationData, setExplanationData] = useState<{
@@ -39,7 +74,6 @@ export const App: React.FC = () => {
     url: string;
   }>({ isOpen: false, url: "" });
 
-  // Initial fetch profiles
   useEffect(() => {
     fetchProfiles()
       .then((data) => {
@@ -76,6 +110,61 @@ export const App: React.FC = () => {
     };
   }, [selectedProfileId]);
 
+  const markRecapViewed = (profileId: number) => {
+    setViewedProfileIds((prev) => {
+      if (prev.includes(profileId)) return prev;
+      const next = [...prev, profileId];
+      try {
+        localStorage.setItem(RECAP_VIEWED_KEY, JSON.stringify(next));
+      } catch {
+        // Состояние всё равно сохранится в React до перезагрузки страницы.
+      }
+      return next;
+    });
+  };
+
+  const markOnboardingSeen = (profileId: number) => {
+    addStoredProfileId(ONBOARDING_SEEN_KEY, profileId);
+    setSeenOnboardingProfileIds((prev) => {
+      if (prev.includes(profileId)) return prev;
+      return [...prev, profileId];
+    });
+  };
+
+  const handleSelectProfile = (profileId: number) => {
+    setActiveView("feed");
+    if (profileId !== selectedProfileId) {
+      setSelectedProfileId(profileId);
+    }
+  };
+
+  const handleOpenStories = () => {
+    markRecapViewed(selectedProfileId);
+    markOnboardingSeen(selectedProfileId);
+    setActiveView("stories");
+  };
+
+  const handleDismissOnboarding = () => {
+    markOnboardingSeen(selectedProfileId);
+  };
+
+  const alreadyViewed = viewedProfileIds.includes(selectedProfileId);
+  const alreadySawOnboarding =
+    seenOnboardingProfileIds.includes(selectedProfileId);
+
+  const isOnboardingOpen =
+    !alreadyViewed &&
+    !alreadySawOnboarding &&
+    !loading &&
+    recapData?.profile.id === selectedProfileId &&
+    activeView === "feed";
+
+  useEffect(() => {
+    if (isOnboardingOpen && selectedProfileId) {
+      addStoredProfileId(ONBOARDING_SEEN_KEY, selectedProfileId);
+    }
+  }, [isOnboardingOpen, selectedProfileId]);
+
   const handleOpenCardExplanation = (card: RecapCard) => {
     setExplanationData({
       isOpen: true,
@@ -108,7 +197,7 @@ export const App: React.FC = () => {
       <Header
         profiles={profiles}
         selectedProfileId={selectedProfileId}
-        onSelectProfile={setSelectedProfileId}
+        onSelectProfile={handleSelectProfile}
         activeView={activeView}
         onChangeView={setActiveView}
       />
@@ -132,8 +221,9 @@ export const App: React.FC = () => {
               />
             ) : (
               <AvitoMainFeed
-                onOpenStories={() => setActiveView("stories")}
+                onOpenStories={handleOpenStories}
                 onOpenAchievements={() => setActiveView("achievements")}
+                isRecapViewed={viewedProfileIds.includes(selectedProfileId)}
               />
             )}
 
@@ -156,6 +246,15 @@ export const App: React.FC = () => {
           </div>
         )}
       </main>
+
+      {recapData && (
+        <RecapOnboarding
+          isOpen={isOnboardingOpen}
+          profile={recapData.profile}
+          onOpenRecap={handleOpenStories}
+          onClose={handleDismissOnboarding}
+        />
+      )}
 
       {/* Modals */}
       <ExplanationModal

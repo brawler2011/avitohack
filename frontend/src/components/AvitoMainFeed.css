@@ -177,3 +177,48 @@
     opacity: 0;
   }
 }
+
+/* Recap viewed / unviewed status */
+.recap-status-badge {
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  z-index: 3;
+  width: max-content;
+  max-width: 92px;
+  transform: translateX(-50%);
+  padding: 3px 6px;
+  border: 1px solid #ffffff;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 7px;
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: 0.045em;
+  white-space: nowrap;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.13);
+}
+
+.recap-status-badge--unviewed {
+  background: linear-gradient(135deg, #ff4053, #f72b72);
+  animation: recapStatusAttention 2.8s ease-in-out infinite;
+}
+
+.recap-status-badge--viewed {
+  background: linear-gradient(135deg, #6e777d, #8d959b);
+  opacity: 0.86;
+}
+
+@keyframes recapStatusAttention {
+  0%, 100% {
+    box-shadow:
+      0 3px 8px rgba(0, 0, 0, 0.13),
+      0 0 0 0 rgba(255, 64, 83, 0);
+  }
+
+  50% {
+    box-shadow:
+      0 3px 8px rgba(0, 0, 0, 0.13),
+      0 0 0 5px rgba(255, 64, 83, 0.07);
+  }
+}

@@ -5,11 +5,13 @@ import "./AvitoMainFeed.css";
 interface AvitoMainFeedProps {
   onOpenStories: () => void;
   onOpenAchievements: () => void;
+  isRecapViewed?: boolean;
 }
 
 export const AvitoMainFeed: React.FC<AvitoMainFeedProps> = ({
   onOpenStories,
   onOpenAchievements,
+  isRecapViewed = false,
 }) => {
   const categories = [
     {
@@ -137,8 +139,14 @@ export const AvitoMainFeed: React.FC<AvitoMainFeedProps> = ({
                 </div>
               </div>
             </div>
-            <span className="absolute -bottom-1 bg-[#ff4053] text-white text-[9px] font-black px-1.5 py-0.2 rounded-full border border-white uppercase">
-              NEW
+            <span
+              className={`recap-status-badge ${
+                isRecapViewed
+                  ? "recap-status-badge--viewed"
+                  : "recap-status-badge--unviewed"
+              }`}
+            >
+              {isRecapViewed ? "ПРОСМОТРЕНО" : "НЕ ПРОСМОТРЕНО"}
             </span>
           </div>
 

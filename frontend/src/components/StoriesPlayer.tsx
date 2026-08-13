@@ -13,6 +13,9 @@ import {
   Share2,
   Sparkles,
   Star,
+  TrendingUp,
+  Trophy,
+  WalletCards,
   X,
 } from "lucide-react";
 
@@ -111,7 +114,10 @@ export const StoriesPlayer: React.FC<StoriesPlayerProps> = ({
   const currentCard = cards[currentIndex];
   const profileInitials = getProfileInitials(profile.full_name);
 
-  const orbConfigs = useMemo(() => createOrbConfigs(currentIndex), [currentIndex]);
+  const orbConfigs = useMemo(
+    () => createOrbConfigs(currentIndex),
+    [currentIndex],
+  );
 
   useEffect(() => {
     if (isPaused || !currentCard) return;
@@ -354,6 +360,14 @@ export const StoriesPlayer: React.FC<StoriesPlayerProps> = ({
 
     if (card.card_type === "finance") return "58px";
 
+    if (card.card_type === "achievement") {
+      if (longestWord >= 13) return "43px";
+      if (totalLength <= 11) return "52px";
+      if (totalLength <= 16) return "48px";
+      if (totalLength <= 22) return "44px";
+      return "40px";
+    }
+
     if (card.card_type === "cta") {
       if (longestWord >= 12) return "36px";
       if (longestWord >= 10) return "39px";
@@ -404,6 +418,21 @@ export const StoriesPlayer: React.FC<StoriesPlayerProps> = ({
 
   const displayTitle = currentCard.title.replace(/-/g, "‑");
 
+  const splitStoryText = (text: string) => {
+    const parts =
+      text
+        .match(/[^.!?]+[.!?]+|[^.!?]+$/g)
+        ?.map((part) => part.trim())
+        .filter(Boolean) ?? [];
+
+    return {
+      lead: parts[0] || text,
+      detail: parts.slice(1).join(" "),
+    };
+  };
+
+  const welcomeStory = splitStoryText(currentCard.description);
+
   const financeStats =
     currentCard.card_type === "finance"
       ? currentCard.description
@@ -423,6 +452,32 @@ export const StoriesPlayer: React.FC<StoriesPlayerProps> = ({
           .filter((item) => item.label)
       : [];
 
+  const financeValues = financeStats.map((stat) => {
+    const numeric = Number(
+      stat.value.replace(/[^0-9.,-]/g, "").replace(",", "."),
+    );
+    return Number.isFinite(numeric) ? Math.max(0, numeric) : 0;
+  });
+
+  const financeTotal = financeValues.reduce((sum, value) => sum + value, 0);
+
+  const financeShares = financeValues.map((value, index) => {
+    if (financeTotal > 0) {
+      return Math.round((value / financeTotal) * 100);
+    }
+
+    return financeValues.length === 2 ? 50 : index === 0 ? 100 : 0;
+  });
+
+  const getFinanceShortLabel = (label: string, index: number) => {
+    const normalized = label.toLowerCase();
+
+    if (normalized.includes("заработ")) return "Продажи";
+    if (normalized.includes("сэконом")) return "Экономия";
+
+    return index === 0 ? "Результат 1" : "Результат 2";
+  };
+
   const achievementLevel =
     currentCard.card_type === "achievement"
       ? currentCard.subtitle.match(/\d+/)?.[0]
@@ -441,6 +496,10 @@ export const StoriesPlayer: React.FC<StoriesPlayerProps> = ({
   };
 
   const achievementTheme = getAchievementTheme(achievementLevel);
+  const achievementLevelNumber = Math.min(
+    3,
+    Math.max(1, Number(achievementLevel || 1)),
+  );
 
   return (
     <div className="relative w-full min-h-full flex items-center justify-center p-4 font-sans">
@@ -615,7 +674,7 @@ export const StoriesPlayer: React.FC<StoriesPlayerProps> = ({
 
           {/* Content */}
           <main
-            className={`relative z-20 flex min-h-0 flex-1 flex-col justify-start ${currentCard.card_type === "cta" ? "pt-0 pb-3" : "pt-5 pb-3"}`}
+            className={`story-card-main story-card-main--${currentCard.card_type} relative z-20 flex min-h-0 flex-1 flex-col justify-start ${currentCard.card_type === "cta" ? "pt-0 pb-3" : "pt-5 pb-3"}`}
           >
             <div
               style={getAccentStyle(currentCard)}
@@ -720,10 +779,52 @@ export const StoriesPlayer: React.FC<StoriesPlayerProps> = ({
                 </div>
 
                 <div
-                  className={`story-copy-panel story-copy-panel--achievement story-copy-panel--${achievementTheme.tone}`}
+                  className={`story-achievement-insight story-achievement-insight--${achievementTheme.tone}`}
                 >
-                  <span className="story-copy-panel__mark">✦</span>
-                  <p>{currentCard.description}</p>
+                  <span className="story-achievement-insight__icon">
+                    <Trophy className="h-[17px] w-[17px]" aria-hidden="true" />
+                  </span>
+
+                  <div className="story-achievement-insight__copy">
+                    <span className="story-achievement-insight__eyebrow">
+                      За что награда
+                    </span>
+                    <p>{currentCard.description}</p>
+                  </div>
+                </div>
+
+                <div
+                  className={`story-achievement-tier story-achievement-tier--${achievementTheme.tone}`}
+                  aria-label={`Достигнут ${achievementLevelNumber} уровень из 3`}
+                >
+                  <div className="story-achievement-tier__header">
+                    <span>Путь достижения</span>
+                    <strong>{achievementLevelNumber} / 3</strong>
+                  </div>
+
+                  <div
+                    className={`story-achievement-tier__track story-achievement-tier__track--level-${achievementLevelNumber}`}
+                  >
+                    {[1, 2, 3].map((level) => (
+                      <div
+                        key={level}
+                        className={`story-achievement-tier__step ${
+                          level <= achievementLevelNumber ? "is-reached" : ""
+                        } ${level === achievementLevelNumber ? "is-current" : ""}`}
+                      >
+                        <span className="story-achievement-tier__dot">
+                          {level}
+                        </span>
+                        <span className="story-achievement-tier__name">
+                          {level === 1
+                            ? "Bronze"
+                            : level === 2
+                              ? "Silver"
+                              : "Gold"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </>
             ) : (
@@ -740,42 +841,154 @@ export const StoriesPlayer: React.FC<StoriesPlayerProps> = ({
                 )}
 
                 {currentCard.card_type === "finance" ? (
-                  <div className="story-finance-grid">
-                    {financeStats.map((stat, index) => (
-                      <div
-                        key={`${stat.label}-${index}`}
-                        className="story-stat-card"
-                      >
-                        <span className="story-stat-card__number">
-                          {index + 1}
-                        </span>
-                        <span className="story-stat-card__label">
-                          {stat.label}
-                        </span>
-                        <strong className="story-stat-card__value">
-                          {stat.value}
-                        </strong>
+                  <>
+                    <div className="story-finance-grid">
+                      {financeStats.map((stat, index) => (
+                        <div
+                          key={`${stat.label}-${index}`}
+                          className="story-stat-card"
+                        >
+                          <span className="story-stat-card__number">
+                            {index + 1}
+                          </span>
+                          <span className="story-stat-card__label">
+                            {stat.label}
+                          </span>
+                          <strong className="story-stat-card__value">
+                            {stat.value}
+                          </strong>
+                        </div>
+                      ))}
+                    </div>
+
+                    {financeStats.length > 0 && (
+                      <div className="story-finance-breakdown">
+                        <div className="story-finance-breakdown__header">
+                          <span className="story-finance-breakdown__icon">
+                            <WalletCards
+                              className="h-[15px] w-[15px]"
+                              aria-hidden="true"
+                            />
+                          </span>
+                          <span>Структура результата</span>
+                        </div>
+
+                        <div
+                          className="story-finance-breakdown__track"
+                          aria-label="Соотношение финансового результата"
+                        >
+                          {financeStats.slice(0, 2).map((stat, index) => (
+                            <span
+                              key={`${stat.label}-share`}
+                              className={`story-finance-breakdown__segment story-finance-breakdown__segment--${index + 1}`}
+                              style={{
+                                width: `${financeShares[index] ?? 0}%`,
+                              }}
+                            />
+                          ))}
+                        </div>
+
+                        <div className="story-finance-breakdown__legend">
+                          {financeStats.slice(0, 2).map((stat, index) => (
+                            <div
+                              key={`${stat.label}-legend`}
+                              className="story-finance-breakdown__legend-item"
+                            >
+                              <span
+                                className={`story-finance-breakdown__legend-dot story-finance-breakdown__legend-dot--${index + 1}`}
+                              />
+                              <span>
+                                {getFinanceShortLabel(stat.label, index)}
+                              </span>
+                              <strong>{financeShares[index] ?? 0}%</strong>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </>
                 ) : (
                   <>
-                    <div
-                      className={`story-copy-panel ${
-                        currentCard.card_type === "cta"
-                          ? "story-copy-panel--finale"
-                          : ""
-                      }`}
-                    >
-                      <span className="story-copy-panel__mark">
-                        {currentCard.card_type === "category"
-                          ? "01"
-                          : currentCard.card_type === "cta"
-                            ? "→"
-                            : "✦"}
-                      </span>
-                      <p>{currentCard.description}</p>
-                    </div>
+                    {currentCard.card_type === "welcome" ? (
+                      <div className="story-welcome-insight">
+                        <div className="story-welcome-insight__head">
+                          <span className="story-welcome-insight__icon">
+                            <TrendingUp
+                              className="h-[16px] w-[16px]"
+                              aria-hidden="true"
+                            />
+                          </span>
+                          <span>Ваш результат года</span>
+                        </div>
+
+                        <p className="story-welcome-insight__lead">
+                          {welcomeStory.lead}
+                        </p>
+
+                        {welcomeStory.detail && (
+                          <p className="story-welcome-insight__detail">
+                            {welcomeStory.detail}
+                          </p>
+                        )}
+
+                        <div
+                          className="story-welcome-insight__footer"
+                          aria-hidden="true"
+                        >
+                          <span>2024</span>
+                          <span className="story-welcome-insight__line" />
+                          <span>личный итог</span>
+                        </div>
+                      </div>
+                    ) : currentCard.card_type === "category" ? (
+                      <>
+                        <div className="story-copy-panel story-copy-panel--category">
+                          <span className="story-copy-panel__mark story-copy-panel__mark--icon">
+                            <TrendingUp
+                              className="h-[15px] w-[15px]"
+                              aria-hidden="true"
+                            />
+                          </span>
+
+                          <div className="story-copy-panel__body">
+                            <span className="story-copy-panel__eyebrow">
+                              Пик интереса
+                            </span>
+                            <p>{currentCard.description}</p>
+                          </div>
+                        </div>
+
+                        <div className="story-category-meter">
+                          <div className="story-category-meter__head">
+                            <span>Интерес к категории</span>
+                            <strong>TOP 1</strong>
+                          </div>
+
+                          <div className="story-category-meter__track">
+                            <span className="story-category-meter__fill" />
+                            <span className="story-category-meter__pulse" />
+                          </div>
+
+                          <div className="story-category-meter__footer">
+                            <span>Ваш лидер года</span>
+                            <strong>{displayHighlight}</strong>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div
+                        className={`story-copy-panel ${
+                          currentCard.card_type === "cta"
+                            ? "story-copy-panel--finale"
+                            : ""
+                        }`}
+                      >
+                        <span className="story-copy-panel__mark">
+                          {currentCard.card_type === "cta" ? "→" : "✦"}
+                        </span>
+                        <p>{currentCard.description}</p>
+                      </div>
+                    )}
 
                     {currentCard.card_type === "cta" && (
                       <div className="story-review-card mt-3 rounded-[18px] bg-white px-3.5 py-3 text-[#17181c] shadow-[0_14px_34px_rgba(0,0,0,0.14)]">

@@ -64,6 +64,11 @@ func main() {
 		slog.Info("Connected to PostgreSQL successfully!")
 		queries = sqlc.New(dbPool)
 
+		// Auto-initialize schema (create missing tables like recap_cache if they don't exist)
+		if err := db.InitSchema(context.Background(), dbPool); err != nil {
+			slog.Warn("Database schema initialization warning", slog.Any("error", err))
+		}
+
 		// Load seed data from CSV inside database transactions
 		if err := db.LoadCSVData(context.Background(), dbPool, queries, cfg.CSVUsersPath, cfg.CSVActivitiesPath); err != nil {
 			slog.Warn("CSV loading error", slog.Any("error", err))

@@ -7,6 +7,10 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   lint-and-test-backend:
     name: Lint & Test Backend
@@ -27,7 +31,6 @@ jobs:
           version: v1.64.8
           working-directory: backend
           args: --config=../.golangci.yaml
-          install-mode: goinstall
 
       - name: Run Backend Tests
         working-directory: backend
@@ -55,9 +58,50 @@ jobs:
         working-directory: frontend
         run: bun run build
 
+  build-and-push-images:
+    name: Build & Push Docker Images
+    needs: [lint-and-test-backend, lint-and-build-frontend]
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Backend Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: ghcr.io/brawler2011/avitohack-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and Push Frontend Builder Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: frontend/Dockerfile
+          build-args: |
+            VITE_API_BASE_URL=/api/v1
+          push: true
+          tags: ghcr.io/brawler2011/avitohack-frontend-builder:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   deploy:
     name: Deploy to Production VPS
-    needs: [lint-and-test-backend, lint-and-build-frontend]
+    needs: [build-and-push-images]
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     steps:
@@ -77,5 +121,6 @@ jobs:
             cat << 'EOF' > .env
             ${{ secrets.PROD_ENV_FILE }}
             EOF
-            docker compose -f docker-compose.server.yml up -d --build --remove-orphans
+            docker compose -f docker-compose.server.yml pull
+            docker compose -f docker-compose.server.yml up -d --remove-orphans
             docker image prune -f

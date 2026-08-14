@@ -50,6 +50,7 @@ services:
 
   backend:
     restart: unless-stopped
+    image: ghcr.io/brawler2011/avitohack-backend:latest
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -76,6 +77,7 @@ services:
         condition: service_healthy
 
   frontend-builder:
+    image: ghcr.io/brawler2011/avitohack-frontend-builder:latest
     build:
       context: ./frontend
       dockerfile: Dockerfile

@@ -1,0 +1,37 @@
+name: Docker Compose Logs
+
+on:
+  workflow_dispatch:
+    inputs:
+      lines:
+        description: 'Number of log lines to show'
+        required: false
+        default: '200'
+        type: string
+      service:
+        description: 'Specific service (e.g. backend, caddy, postgres, rabbitmq, redis) - optional'
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  get-logs:
+    name: Fetch Logs from VPS
+    runs-on: ubuntu-latest
+    steps:
+      - name: Execute SSH to read Docker Compose Logs
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            cd ${{ secrets.PROJECT_PATH }}
+            LINES="${{ inputs.lines }}"
+            SERVICE="${{ inputs.service }}"
+            if [ -z "$LINES" ]; then
+              LINES="200"
+            fi
+            echo "--- Fetching last $LINES lines of docker compose logs ---"
+            docker compose -f docker-compose.server.yml logs --tail="$LINES" $SERVICE

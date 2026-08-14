@@ -17,6 +17,7 @@ import { PublicShareCardPage } from "./components/PublicShareCardPage";
 import { Loader2 } from "lucide-react";
 import { RecapReveal } from "./components/recap/RecapReveal";
 import { RecapOnboarding } from "./components/RecapOnboarding";
+import { AdminDashboard } from "./components/AdminDashboard";
 
 const getShareTokenFromUrl = (): string | null => {
   const hash = window.location.hash;
@@ -72,7 +73,7 @@ export const App: React.FC = () => {
   const [selectedProfileId, setSelectedProfileId] = useState<number>(1);
   const [recapData, setRecapData] = useState<RecapResponse | null>(null);
   const [activeView, setActiveView] = useState<
-    "feed" | "stories" | "achievements"
+    "feed" | "stories" | "achievements" | "admin"
   >("feed");
   const [loading, setLoading] = useState<boolean>(true);
   const [seenOnboardingProfileIds, setSeenOnboardingProfileIds] = useState<
@@ -255,7 +256,14 @@ export const App: React.FC = () => {
       />
 
       <main className="flex-1 pb-12">
-        {loading ? (
+        {activeView === "admin" ? (
+          <AdminDashboard
+            onSelectUserForPreview={(userId) => {
+              setSelectedProfileId(userId);
+              setActiveView("stories");
+            }}
+          />
+        ) : loading ? (
           <div className="flex flex-col items-center justify-center min-h-[calc(100vh-160px)] space-y-4">
             <Loader2 className="w-12 h-12 text-[#00aa5b] animate-spin" />
             <p className="text-[#757575] font-semibold text-sm">

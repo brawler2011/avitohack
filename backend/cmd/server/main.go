@@ -10,8 +10,10 @@ import (
 
 	"github.com/avitohack/backend/internal/config"
 	"github.com/avitohack/backend/internal/db"
+	"github.com/avitohack/backend/internal/queue"
 	"github.com/avitohack/backend/internal/repository/pg/sqlc"
 	"github.com/avitohack/backend/internal/service"
+	"github.com/avitohack/backend/internal/ws"
 	"github.com/avitohack/backend/pkg/api"
 
 	"github.com/go-chi/chi/v5"
@@ -77,8 +79,30 @@ func main() {
 		slog.Warn("OpenRouter API key is not set. Service will use template fallback.")
 	}
 
-	recapSvc := service.NewRecapService(queries, llmGen)
-	recapSvc.PrewarmRecapCache(context.Background())
+	// Initialize WebSocket Hub
+	wsHub := ws.NewHub()
+	go wsHub.Run()
+
+	// Initialize RabbitMQ Queue Service
+	queueSvc, err := queue.NewQueueService(cfg.RabbitMQURL)
+	if err != nil {
+		slog.Warn("RabbitMQ connection warning", slog.Any("error", err))
+	} else {
+		defer queueSvc.Close()
+	}
+
+	// Initialize RecapService
+	recapSvc := service.NewRecapService(queries, llmGen, queueSvc, wsHub)
+
+	// Start 3 worker goroutines for processing tasks from RabbitMQ
+	if queueSvc != nil {
+		err := queueSvc.StartWorkers(context.Background(), 3, func(ctx context.Context, task queue.GenerationTask) error {
+			return recapSvc.GenerateAndStoreRecapForUser(ctx, task.UserID, task.Force)
+		})
+		if err != nil {
+			slog.Error("Failed to start RabbitMQ workers", slog.Any("error", err))
+		}
+	}
 
 	strictHandler := api.NewStrictHandler(recapSvc, nil)
 
@@ -105,6 +129,9 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"status":"ok"}`))
 	})
+
+	// WebSocket endpoint for Admin Dashboard
+	r.Get("/api/v1/admin/ws", wsHub.ServeHTTP)
 
 	api.HandlerFromMux(strictHandler, r)
 

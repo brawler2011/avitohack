@@ -20,6 +20,22 @@ services:
       timeout: 3s
       retries: 5
 
+  rabbitmq:
+    restart: unless-stopped
+    image: rabbitmq:3-management-alpine
+    container_name: avitohack-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
   backend:
     restart: unless-stopped
     build:
@@ -33,10 +49,13 @@ services:
     environment:
       PORT: "${PORT:-8080}"
       DATABASE_URL: "postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgrespassword}@postgres:5432/${POSTGRES_DB:-avitohack}?sslmode=disable"
+      RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
       CSV_USERS_PATH: "/data/users.csv"
       CSV_ACTIVITIES_PATH: "/data/user_activities.csv"
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   frontend-builder:

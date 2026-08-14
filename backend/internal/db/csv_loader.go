@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -120,6 +121,82 @@ func LoadCSVData(ctx context.Context, transactor pg.Transactor, fallback sqlc.Qu
 	})
 	if err != nil {
 		return fmt.Errorf("activity seeding transaction failed: %w", err)
+	}
+
+	// 5. Seed initial pre-generated recaps for users #1 and #2 (leaving #3, #4, #5 ungenerated for testing)
+	err = pg.ExecTxOrFallback(ctx, transactor, fallback, func(q sqlc.Querier) error {
+		for _, uID := range []int32{1, 2} {
+			_, err := q.GetRecapCacheByProfileID(ctx, uID)
+			if err == nil {
+				continue // Already exists
+			}
+
+			user, err := q.GetUserByID(ctx, uID)
+			if err != nil {
+				continue
+			}
+
+			var aiTitle, aiStory, archetype string
+			if uID == 1 {
+				aiTitle = "Мастер Продаж и Торговли"
+				aiStory = "В 2024 году вы покорили Авито своими успешными сделками и мгновенными ответами покупателям."
+				archetype = "Профи-Продавец"
+			} else {
+				aiTitle = "Охотница за Сокровищами"
+				aiStory = "Ваша интуиция и умение находить лучшие предложения сэкономили вам отличный бюджет в этом году!"
+				archetype = "Выгодный Покупатель"
+			}
+
+			cards := []map[string]interface{}{
+				{
+					"id":             fmt.Sprintf("card_%d_welcome", uID),
+					"card_type":      "welcome",
+					"title":          fmt.Sprintf("Привет, %s!", user.FullName),
+					"subtitle":       "Твой 2024 год на Авито",
+					"highlight_stat": archetype,
+					"description":    aiStory,
+					"bg_gradient":    "from-emerald-600 via-teal-600 to-cyan-700",
+					"icon_name":      "sparkles",
+					"explanation":    "Персональный итог года",
+				},
+			}
+
+			achievements := []map[string]interface{}{
+				{
+					"id":               "first_deal",
+					"code":             "FIRST_DEAL",
+					"name":             "Успешный старт",
+					"description":      "Совершить первую сделку на Авито",
+					"badge_icon":       "trophy",
+					"level":            1,
+					"current_progress": 1,
+					"max_progress":     1,
+					"is_unlocked":      true,
+					"cta_text":         "Смотреть профиль",
+					"cta_action":       "profile",
+					"explanation":      "Получено за успешную активность на платформе",
+				},
+			}
+
+			cardsBytes, _ := json.Marshal(cards)
+			achBytes, _ := json.Marshal(achievements)
+			shareToken := fmt.Sprintf("share_token_user_%d", uID)
+
+			_, _ = q.UpsertRecapCache(ctx, sqlc.UpsertRecapCacheParams{
+				ProfileID:        uID,
+				ShareToken:       shareToken,
+				AiTitle:          aiTitle,
+				AiStory:          aiStory,
+				Archetype:        archetype,
+				GeneratedByAi:    true,
+				CardsJson:        cardsBytes,
+				AchievementsJson: achBytes,
+			})
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("recap cache seeding failed: %w", err)
 	}
 
 	return nil

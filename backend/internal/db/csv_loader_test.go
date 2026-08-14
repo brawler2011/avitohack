@@ -33,6 +33,21 @@ func (m *mockQuerier) InsertActivity(ctx context.Context, arg sqlc.InsertActivit
 	return args.Get(0).(sqlc.UserActivity), args.Error(1)
 }
 
+func (m *mockQuerier) GetRecapCacheByProfileID(ctx context.Context, profileID int32) (sqlc.RecapCache, error) {
+	args := m.Called(ctx, profileID)
+	return args.Get(0).(sqlc.RecapCache), args.Error(1)
+}
+
+func (m *mockQuerier) GetUserByID(ctx context.Context, id int32) (sqlc.User, error) {
+	args := m.Called(ctx, id)
+	return args.Get(0).(sqlc.User), args.Error(1)
+}
+
+func (m *mockQuerier) UpsertRecapCache(ctx context.Context, arg sqlc.UpsertRecapCacheParams) (sqlc.RecapCache, error) {
+	args := m.Called(ctx, arg)
+	return args.Get(0).(sqlc.RecapCache), args.Error(1)
+}
+
 func createTempCSV(t *testing.T, filename, content string) string {
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, filename)
@@ -52,6 +67,9 @@ func TestLoadCSVData_Success(t *testing.T) {
 	q.On("UpsertUser", mock.Anything, mock.Anything).Return(sqlc.User{}, nil)
 	q.On("DeleteAllActivities", mock.Anything).Return(nil)
 	q.On("InsertActivity", mock.Anything, mock.Anything).Return(sqlc.UserActivity{}, nil)
+	q.On("GetRecapCacheByProfileID", mock.Anything, mock.Anything).Return(sqlc.RecapCache{}, errors.New("not found"))
+	q.On("GetUserByID", mock.Anything, mock.Anything).Return(sqlc.User{}, nil)
+	q.On("UpsertRecapCache", mock.Anything, mock.Anything).Return(sqlc.RecapCache{}, nil)
 
 	err := db.LoadCSVData(context.Background(), nil, q, usersPath, actPath)
 

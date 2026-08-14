@@ -9,6 +9,7 @@ import (
 type Config struct {
 	Port              string
 	DatabaseURL       string
+	RabbitMQURL       string
 	CSVUsersPath      string
 	CSVActivitiesPath string
 	OpenRouterAPIKey  string
@@ -32,6 +33,11 @@ func Load() *Config {
 		dbURL = "postgres://postgres:postgrespassword@localhost:5432/avitohack?sslmode=disable"
 	}
 
+	rabbitURL := os.Getenv("RABBITMQ_URL")
+	if rabbitURL == "" {
+		rabbitURL = "amqp://guest:guest@localhost:5672/"
+	}
+
 	csvUsers := os.Getenv("CSV_USERS_PATH")
 	if csvUsers == "" {
 		csvUsers = "../data/users.csv"
@@ -51,6 +57,7 @@ func Load() *Config {
 	return &Config{
 		Port:              port,
 		DatabaseURL:       dbURL,
+		RabbitMQURL:       rabbitURL,
 		CSVUsersPath:      csvUsers,
 		CSVActivitiesPath: csvActivities,
 		OpenRouterAPIKey:  openRouterKey,

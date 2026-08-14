@@ -49,6 +49,8 @@ services:
       RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
       CSV_USERS_PATH: "/data/users.csv"
       CSV_ACTIVITIES_PATH: "/data/user_activities.csv"
+      OPENROUTER_API_KEY: "${OPENROUTER_API_KEY}"
+      OPENROUTER_MODEL: "${OPENROUTER_MODEL:-google/gemini-2.0-flash-001}"
     depends_on:
       postgres:
         condition: service_healthy

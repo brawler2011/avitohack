@@ -17,7 +17,6 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
-  Activity,
   Layers,
   User,
   Radio,
@@ -26,10 +25,12 @@ import {
 
 interface AdminDashboardProps {
   onSelectUserForPreview: (userId: number) => void;
+  onRecapUpdated?: (userId: number) => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onSelectUserForPreview,
+  onRecapUpdated,
 }) => {
   const [users, setUsers] = useState<AdminUserItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -67,22 +68,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // WebSocket Connection Lifecycle
   useEffect(() => {
+    let isMounted = true;
     const wsUrl = getWebSocketUrl();
     console.log('[Admin] Connecting WebSocket:', wsUrl);
 
-    let socket: WebSocket | null = null;
     let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const connectWS = () => {
+      if (!isMounted) return;
+
       try {
-        socket = new WebSocket(wsUrl);
+        const socket = new WebSocket(wsUrl);
+        wsRef.current = socket;
 
         socket.onopen = () => {
+          if (!isMounted) return;
           console.log('[Admin] WebSocket Connected');
           setWsConnected(true);
         };
 
         socket.onmessage = (event) => {
+          if (!isMounted) return;
           try {
             const data: WSEventMessage = JSON.parse(event.data);
             console.log('[Admin] WS Event:', data);
@@ -98,6 +104,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               setGeneratingUserIds((prev) => prev.filter((id) => id !== data.user_id));
               setQueuedUserIds((prev) => prev.filter((id) => id !== data.user_id));
               loadUsers();
+              if (data.status === 'COMPLETED' && onRecapUpdated) {
+                onRecapUpdated(data.user_id);
+              }
             }
           } catch (e) {
             console.error('[Admin] WS message parse error:', e);
@@ -105,27 +114,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         };
 
         socket.onclose = () => {
+          if (!isMounted) return;
           setWsConnected(false);
           reconnectTimeout = setTimeout(connectWS, 3000);
         };
 
         socket.onerror = (err) => {
+          if (!isMounted) return;
           console.warn('[Admin] WS Error:', err);
-          socket?.close();
         };
-
-        wsRef.current = socket;
       } catch (e) {
         console.error('[Admin] WS setup error:', e);
-        reconnectTimeout = setTimeout(connectWS, 3000);
+        if (isMounted) {
+          reconnectTimeout = setTimeout(connectWS, 3000);
+        }
       }
     };
 
     connectWS();
 
     return () => {
+      isMounted = false;
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
-      if (wsRef.current) wsRef.current.close();
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.onerror = null;
+        wsRef.current.close();
+        wsRef.current = null;
+      }
     };
   }, []);
 
@@ -188,44 +204,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   return (
     <div className="min-h-screen bg-[#f4f5f7] text-[#222222] font-sans pb-16">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white py-8 border-b border-slate-800 shadow-md">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs uppercase tracking-wider mb-1">
-              <Activity className="w-4 h-4" />
-              <span>Панель Управления ИИ-Генерацией</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              Админка Итогов Года на Авито
-            </h1>
-            <p className="text-sm text-slate-300 mt-1 max-w-2xl">
-              Управление задачами генерации карточек и достижений через RabbitMQ очередь, просмотр маскированных PII промптов и мониторинг в реальном времени.
-            </p>
+      <div className="max-w-7xl mx-auto px-4 pt-6 space-y-6">
+        {/* Header Controls Bar */}
+        <div className="flex items-center justify-end gap-3">
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border ${
+            wsConnected
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              : 'bg-amber-50 text-amber-700 border-amber-200'
+          }`}>
+            <Radio className={`w-3.5 h-3.5 ${wsConnected ? 'animate-pulse text-emerald-600' : 'text-amber-600'}`} />
+            <span>{wsConnected ? 'WebSockets Live: Подключено' : 'WebSockets: Подключение...'}</span>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border ${
-              wsConnected
-                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-            }`}>
-              <Radio className={`w-3.5 h-3.5 ${wsConnected ? 'animate-pulse text-emerald-400' : 'text-amber-400'}`} />
-              <span>{wsConnected ? 'WebSockets Live: Подключено' : 'WebSockets: Подключение...'}</span>
-            </div>
-
-            <button
-              onClick={loadUsers}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm font-semibold transition-all border border-slate-700 cursor-pointer"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              <span>Обновить</span>
-            </button>
-          </div>
+          <button
+            onClick={loadUsers}
+            className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 text-gray-800 rounded-xl text-sm font-semibold transition-all border border-gray-200 shadow-xs cursor-pointer"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <span>Обновить</span>
+          </button>
         </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 mt-6 space-y-6">
         {/* OpenRouter API Budget Warning Banner */}
         <div className="bg-amber-500/10 border-2 border-amber-500/40 rounded-2xl p-4 sm:p-5 shadow-xs flex items-start gap-4 text-amber-900 bg-amber-50">
           <div className="p-2.5 bg-amber-500 text-white rounded-xl shrink-0 shadow-xs">
@@ -333,13 +331,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <span>{error}</span>
                 </div>
               ) : (
-                <table className="w-full text-left text-sm text-gray-700">
-                  <thead className="bg-gray-100/70 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                <table className="w-full text-left text-xs sm:text-sm text-gray-700">
+                  <thead className="bg-gray-100/70 text-[11px] font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">
                     <tr>
-                      <th className="py-3.5 px-4">Пользователь</th>
-                      <th className="py-3.5 px-4">Статус карточки</th>
-                      <th className="py-3.5 px-4">Обновлено</th>
-                      <th className="py-3.5 px-4 text-right">Действия</th>
+                      <th className="py-3 px-2.5 sm:px-3">Пользователь</th>
+                      <th className="py-3 px-2.5 sm:px-3">Статус карточки</th>
+                      <th className="py-3 px-2.5 sm:px-3">Обновлено</th>
+                      <th className="py-3 px-2.5 sm:px-3 text-right">Действия</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -350,21 +348,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       return (
                         <tr key={item.profile.id} className="hover:bg-blue-50/30 transition-colors group">
                           {/* Profile */}
-                          <td className="py-3.5 px-4">
-                            <div className="flex items-center gap-3">
+                          <td className="py-2.5 px-2.5 sm:px-3">
+                            <div className="flex items-center gap-2.5">
                               <img
                                 src={item.profile.avatar_url}
                                 alt={item.profile.full_name}
-                                className="w-10 h-10 rounded-full object-cover border border-gray-200 shrink-0"
+                                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover border border-gray-200 shrink-0"
                               />
-                              <div>
-                                <div className="font-extrabold text-gray-900 group-hover:text-[#00a0ff] transition-colors">
+                              <div className="min-w-0">
+                                <div className="font-extrabold text-gray-900 group-hover:text-[#00a0ff] transition-colors truncate text-xs sm:text-sm">
                                   {item.profile.full_name}
                                 </div>
-                                <div className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
+                                <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5 truncate">
                                   <span>@{item.profile.username}</span>
                                   <span>•</span>
-                                  <span className="capitalize px-1.5 py-0.2 bg-gray-100 rounded text-[11px]">
+                                  <span className="capitalize px-1.5 py-0.2 bg-gray-100 rounded text-[10px] shrink-0">
                                     {item.profile.user_type}
                                   </span>
                                 </div>
@@ -373,31 +371,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           </td>
 
                           {/* Status Badge */}
-                          <td className="py-3.5 px-4">
+                          <td className="py-2.5 px-2.5 sm:px-3">
                             {isGenerating ? (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-blue-100 text-blue-800 border border-blue-200 animate-pulse">
-                                <div className="w-2 h-2 rounded-full bg-blue-600 animate-ping"></div>
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-blue-100 text-blue-800 border border-blue-200 animate-pulse whitespace-nowrap">
+                                <div className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-ping"></div>
                                 <span>Обработка ИИ...</span>
                               </span>
                             ) : isQueued ? (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-800 border border-amber-200">
-                                <Clock className="w-3.5 h-3.5" />
-                                <span>В очереди RabbitMQ</span>
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200 whitespace-nowrap">
+                                <Clock className="w-3 h-3" />
+                                <span>В очереди</span>
                               </span>
                             ) : item.has_recap ? (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 whitespace-nowrap">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                                 <span>Сгенерировано</span>
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 border border-gray-200">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-600 border border-gray-200 whitespace-nowrap">
                                 <span>Не сгенерировано</span>
                               </span>
                             )}
                           </td>
 
                           {/* Updated At */}
-                          <td className="py-3.5 px-4 text-xs text-gray-500 whitespace-nowrap">
+                          <td className="py-2.5 px-2.5 sm:px-3 text-[11px] sm:text-xs text-gray-500 whitespace-nowrap">
                             {item.recap_updated_at ? (
                               new Date(item.recap_updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                             ) : (
@@ -406,24 +404,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           </td>
 
                           {/* Action Buttons */}
-                          <td className="py-3.5 px-4 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
+                          <td className="py-2.5 px-2.5 sm:px-3 text-right">
+                            <div className="flex items-center justify-end gap-1">
                               {/* PII Preview Button */}
                               <button
                                 onClick={() => handleOpenPII(item.profile.id)}
                                 title="Превью маскирования личных данных (PII)"
-                                className="p-2 text-slate-600 hover:text-emerald-700 bg-slate-100 hover:bg-emerald-50 rounded-xl transition-all border border-slate-200 cursor-pointer"
+                                className="p-1.5 text-slate-600 hover:text-emerald-700 bg-slate-100 hover:bg-emerald-50 rounded-lg transition-all border border-slate-200 cursor-pointer shrink-0"
                               >
-                                <Eye className="w-4 h-4" />
+                                <Eye className="w-3.5 h-3.5" />
                               </button>
 
                               {/* Preview Stories View */}
                               <button
                                 onClick={() => onSelectUserForPreview(item.profile.id)}
                                 title="Просмотреть карточки пользователя в UI"
-                                className="p-2 text-slate-600 hover:text-[#00a0ff] bg-slate-100 hover:bg-blue-50 rounded-xl transition-all border border-slate-200 cursor-pointer"
+                                className="p-1.5 text-slate-600 hover:text-[#00a0ff] bg-slate-100 hover:bg-blue-50 rounded-lg transition-all border border-slate-200 cursor-pointer shrink-0"
                               >
-                                <ArrowRight className="w-4 h-4" />
+                                <ArrowRight className="w-3.5 h-3.5" />
                               </button>
 
                               {/* Generate or Regenerate Button */}
@@ -431,18 +429,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 <button
                                   onClick={() => handleGenerateSingle(item.profile.id, true)}
                                   disabled={isGenerating || isQueued}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                                  className="flex items-center gap-1 px-2.5 py-1 bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer whitespace-nowrap shrink-0"
                                 >
-                                  <RefreshCw className={`w-3.5 h-3.5 ${isGenerating ? 'animate-spin' : ''}`} />
+                                  <RefreshCw className={`w-3 h-3 ${isGenerating ? 'animate-spin' : ''}`} />
                                   <span>Перегенерировать</span>
                                 </button>
                               ) : (
                                 <button
                                   onClick={() => handleGenerateSingle(item.profile.id, false)}
                                   disabled={isGenerating || isQueued}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00a0ff] hover:bg-[#0088d6] disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                                  className="flex items-center gap-1 px-2.5 py-1 bg-[#00a0ff] hover:bg-[#0088d6] disabled:opacity-50 text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer whitespace-nowrap shrink-0"
                                 >
-                                  <Sparkles className="w-3.5 h-3.5" />
+                                  <Sparkles className="w-3 h-3" />
                                   <span>Сгенерировать</span>
                                 </button>
                               )}
@@ -462,7 +460,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
               <div className="flex items-center gap-2">
                 <Radio className={`w-4 h-4 ${wsConnected ? 'text-emerald-400 animate-pulse' : 'text-amber-400'}`} />
-                <h3 className="font-extrabold text-sm text-white">Live Лог Очереди (WebSockets)</h3>
+                <h3 className="font-extrabold text-sm text-white">Live Лог Очереди</h3>
               </div>
               <span className="text-[11px] font-mono text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
                 RabbitMQ Workers

@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, ShieldCheck, Eye, Lock, FileCode, CheckCircle2 } from 'lucide-react';
+import { X, Eye, Lock, FileCode, CheckCircle2 } from 'lucide-react';
 import { PIIPreviewData } from '../api/client';
 
 interface PIIPreviewModalProps {
@@ -21,21 +21,10 @@ export const PIIPreviewModal: React.FC<PIIPreviewModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden border border-gray-100 flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="bg-gradient-to-r from-emerald-600 to-teal-700 p-5 text-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-white/20 rounded-xl backdrop-blur-xs">
-              <ShieldCheck className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold">Превью маскирования PII (Privacy Check)</h2>
-              <p className="text-xs text-emerald-100 font-medium">
-                Проверка безопасной передачи данных в OpenRouter ИИ
-              </p>
-            </div>
-          </div>
+        <div className="p-4 border-b border-gray-100 flex items-center justify-end">
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-white/20 text-white/80 hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -106,12 +95,6 @@ export const PIIPreviewModal: React.FC<PIIPreviewModalProps> = ({
                       <span className="text-xs text-emerald-600/70 block">Анонимный никнейм</span>
                       <span className="font-mono text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded inline-block">
                         {previewData.masked_username}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-xs text-emerald-600/70 block">Статус защиты PII</span>
-                      <span className="text-xs font-bold text-emerald-600 flex items-center gap-1 mt-1">
-                        <ShieldCheck className="w-3.5 h-3.5" /> 100% Анонимизировано
                       </span>
                     </div>
                   </div>

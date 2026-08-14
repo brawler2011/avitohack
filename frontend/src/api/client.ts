@@ -43,8 +43,13 @@ const getApiBaseUrl = (): string => {
   return import.meta.env.VITE_API_BASE_URL || '/api/v1';
 };
 
+const getOpenApiBaseUrl = (): string => {
+  const baseUrl = getApiBaseUrl();
+  return baseUrl.replace(/\/api\/v1\/?$/, '');
+};
+
 export const api = new Api({
-  BASE: getApiBaseUrl(),
+  BASE: getOpenApiBaseUrl(),
 });
 
 export const fetchProfiles = () => api.default.getProfiles();
@@ -84,7 +89,9 @@ export const getWebSocketUrl = (): string => {
   if (baseUrl.startsWith('http')) {
     const url = new URL(baseUrl);
     const wsProtocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${wsProtocol}//${url.host}/api/v1/admin/ws`;
+    const path = url.pathname.replace(/\/+$/, '');
+    return `${wsProtocol}//${url.host}${path}/admin/ws`;
   }
-  return `${protocol}//${host}${baseUrl}/admin/ws`;
+  const cleanBase = baseUrl.replace(/\/+$/, '');
+  return `${protocol}//${host}${cleanBase}/admin/ws`;
 };

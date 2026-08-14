@@ -129,29 +129,22 @@ export const App: React.FC = () => {
       .catch(console.error);
   }, []);
 
+  const loadRecap = (profileId: number) => {
+    setLoading(true);
+    fetchRecap(profileId)
+      .then((data) => {
+        setRecapData(data);
+      })
+      .catch(console.error)
+      .finally(() => {
+        setLoading(false);
+      });
+  };
+
   // Fetch recap when profile changes
   useEffect(() => {
     if (!selectedProfileId) return;
-    let isMounted = true;
-    Promise.resolve().then(() => {
-      if (isMounted) setLoading(true);
-    });
-    fetchRecap(selectedProfileId)
-      .then((data) => {
-        if (isMounted) {
-          setRecapData(data);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (isMounted) {
-          console.error(err);
-          setLoading(false);
-        }
-      });
-    return () => {
-      isMounted = false;
-    };
+    loadRecap(selectedProfileId);
   }, [selectedProfileId]);
 
   const markRecapViewed = (profileId: number) => {
@@ -177,9 +170,8 @@ export const App: React.FC = () => {
 
   const handleSelectProfile = (profileId: number) => {
     setActiveView("feed");
-    if (profileId !== selectedProfileId) {
-      setSelectedProfileId(profileId);
-    }
+    setSelectedProfileId(profileId);
+    loadRecap(profileId);
   };
 
   const handleOpenStories = () => {
@@ -260,7 +252,13 @@ export const App: React.FC = () => {
           <AdminDashboard
             onSelectUserForPreview={(userId) => {
               setSelectedProfileId(userId);
+              loadRecap(userId);
               setActiveView("stories");
+            }}
+            onRecapUpdated={(userId) => {
+              if (userId === selectedProfileId) {
+                loadRecap(userId);
+              }
             }}
           />
         ) : loading ? (

@@ -2,6 +2,8 @@ package config
 
 import (
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -17,39 +19,54 @@ type Config struct {
 }
 
 func loadEnvFile() {
-	_ = godotenv.Load(".env", "../.env", "../../.env")
+	dir, err := os.Getwd()
+	if err != nil {
+		return
+	}
+	for i := 0; i < 5; i++ {
+		envPath := filepath.Join(dir, ".env")
+		if _, err := os.Stat(envPath); err == nil {
+			_ = godotenv.Overload(envPath)
+			return
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
 }
 
 func Load() *Config {
 	loadEnvFile()
 
-	port := os.Getenv("PORT")
+	port := strings.TrimSpace(os.Getenv("PORT"))
 	if port == "" {
 		port = "8080"
 	}
 
-	dbURL := os.Getenv("DATABASE_URL")
+	dbURL := strings.TrimSpace(os.Getenv("DATABASE_URL"))
 	if dbURL == "" {
 		dbURL = "postgres://postgres:postgrespassword@localhost:5432/avitohack?sslmode=disable"
 	}
 
-	rabbitURL := os.Getenv("RABBITMQ_URL")
+	rabbitURL := strings.TrimSpace(os.Getenv("RABBITMQ_URL"))
 	if rabbitURL == "" {
 		rabbitURL = "amqp://guest:guest@localhost:5672/"
 	}
 
-	csvUsers := os.Getenv("CSV_USERS_PATH")
+	csvUsers := strings.TrimSpace(os.Getenv("CSV_USERS_PATH"))
 	if csvUsers == "" {
 		csvUsers = "../data/users.csv"
 	}
 
-	csvActivities := os.Getenv("CSV_ACTIVITIES_PATH")
+	csvActivities := strings.TrimSpace(os.Getenv("CSV_ACTIVITIES_PATH"))
 	if csvActivities == "" {
 		csvActivities = "../data/user_activities.csv"
 	}
 
-	openRouterKey := os.Getenv("OPENROUTER_API_KEY")
-	openRouterModel := os.Getenv("OPENROUTER_MODEL")
+	openRouterKey := strings.TrimSpace(os.Getenv("OPENROUTER_API_KEY"))
+	openRouterModel := strings.TrimSpace(os.Getenv("OPENROUTER_MODEL"))
 	if openRouterModel == "" {
 		openRouterModel = "google/gemini-2.0-flash-001"
 	}

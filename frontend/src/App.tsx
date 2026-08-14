@@ -17,6 +17,9 @@ import { PublicShareCardPage } from "./components/PublicShareCardPage";
 import { Loader2 } from "lucide-react";
 import { RecapReveal } from "./components/recap/RecapReveal";
 import { RecapOnboarding } from "./components/RecapOnboarding";
+import { AdminDashboard } from "./components/AdminDashboard";
+import { getShareTokenFromUrl } from "./utils/url";
+
 
 const getShareTokenFromUrl = (): string | null => {
   const hash = window.location.hash;
@@ -72,7 +75,7 @@ export const App: React.FC = () => {
   const [selectedProfileId, setSelectedProfileId] = useState<number>(1);
   const [recapData, setRecapData] = useState<RecapResponse | null>(null);
   const [activeView, setActiveView] = useState<
-    "feed" | "stories" | "achievements"
+    "feed" | "stories" | "achievements" | "admin"
   >("feed");
   const [loading, setLoading] = useState<boolean>(true);
   const [seenOnboardingProfileIds, setSeenOnboardingProfileIds] = useState<
@@ -128,28 +131,36 @@ export const App: React.FC = () => {
       .catch(console.error);
   }, []);
 
+  const loadRecap = (profileId: number) => {
+    setLoading(true);
+    fetchRecap(profileId)
+      .then((data) => {
+        setRecapData(data);
+      })
+      .catch(console.error)
+      .finally(() => {
+        setLoading(false);
+      });
+  };
+
   // Fetch recap when profile changes
   useEffect(() => {
     if (!selectedProfileId) return;
-    let isMounted = true;
-    Promise.resolve().then(() => {
-      if (isMounted) setLoading(true);
-    });
+    let isCancelled = false;
     fetchRecap(selectedProfileId)
       .then((data) => {
-        if (isMounted) {
+        if (!isCancelled) {
           setRecapData(data);
-          setLoading(false);
         }
       })
-      .catch((err) => {
-        if (isMounted) {
-          console.error(err);
+      .catch(console.error)
+      .finally(() => {
+        if (!isCancelled) {
           setLoading(false);
         }
       });
     return () => {
-      isMounted = false;
+      isCancelled = true;
     };
   }, [selectedProfileId]);
 
@@ -176,9 +187,8 @@ export const App: React.FC = () => {
 
   const handleSelectProfile = (profileId: number) => {
     setActiveView("feed");
-    if (profileId !== selectedProfileId) {
-      setSelectedProfileId(profileId);
-    }
+    setSelectedProfileId(profileId);
+    loadRecap(profileId);
   };
 
   const handleOpenStories = () => {
@@ -255,7 +265,20 @@ export const App: React.FC = () => {
       />
 
       <main className="flex-1 pb-12">
-        {loading ? (
+        {activeView === "admin" ? (
+          <AdminDashboard
+            onSelectUserForPreview={(userId) => {
+              setSelectedProfileId(userId);
+              loadRecap(userId);
+              setActiveView("stories");
+            }}
+            onRecapUpdated={(userId) => {
+              if (userId === selectedProfileId) {
+                loadRecap(userId);
+              }
+            }}
+          />
+        ) : loading ? (
           <div className="flex flex-col items-center justify-center min-h-[calc(100vh-160px)] space-y-4">
             <Loader2 className="w-12 h-12 text-[#00aa5b] animate-spin" />
             <p className="text-[#757575] font-semibold text-sm">

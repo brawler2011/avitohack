@@ -77,6 +77,56 @@ paths:
               schema:
                 $ref: '#/components/schemas/ShareCard'
 
+  /api/v1/admin/users:
+    get:
+      summary: Get list of users with recap status for admin dashboard
+      operationId: getAdminUsers
+      responses:
+        '200':
+          description: List of user profiles with generation status
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminUserItem'
+
+  /api/v1/admin/generate:
+    post:
+      summary: Enqueue batch AI generation tasks via RabbitMQ
+      operationId: triggerGenerate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateRecapRequest'
+      responses:
+        '202':
+          description: Tasks queued successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateRecapResponse'
+
+  /api/v1/admin/preview/{profileId}:
+    get:
+      summary: Get PII-masked prompt preview and profile data for LLM inspection
+      operationId: getPIIPreview
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: PII preview payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PIIPreviewResponse'
+
 components:
   schemas:
     UserProfile:
@@ -257,4 +307,67 @@ components:
           items:
             type: string
         top_category:
+          type: string
+
+    AdminUserItem:
+      type: object
+      required:
+        - profile
+        - has_recap
+        - generated_by_ai
+      properties:
+        profile:
+          $ref: '#/components/schemas/UserProfile'
+        has_recap:
+          type: boolean
+        generated_by_ai:
+          type: boolean
+        recap_updated_at:
+          type: string
+
+    GenerateRecapRequest:
+      type: object
+      required:
+        - user_ids
+      properties:
+        user_ids:
+          type: array
+          items:
+            type: integer
+        force_regenerate:
+          type: boolean
+          default: false
+
+    GenerateRecapResponse:
+      type: object
+      required:
+        - queued_count
+        - status
+      properties:
+        queued_count:
+          type: integer
+        status:
+          type: string
+
+    PIIPreviewResponse:
+      type: object
+      required:
+        - user_id
+        - original_full_name
+        - original_username
+        - masked_full_name
+        - masked_username
+        - anonymized_prompt_payload
+      properties:
+        user_id:
+          type: integer
+        original_full_name:
+          type: string
+        original_username:
+          type: string
+        masked_full_name:
+          type: string
+        masked_username:
+          type: string
+        anonymized_prompt_payload:
           type: string

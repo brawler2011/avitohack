@@ -18,7 +18,6 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
-
 // Achievement defines model for Achievement.
 type Achievement struct {
 	BadgeIcon       string `json:"badge_icon"`
@@ -33,6 +32,36 @@ type Achievement struct {
 	Level           int    `json:"level"`
 	MaxProgress     int    `json:"max_progress"`
 	Name            string `json:"name"`
+}
+
+// AdminUserItem defines model for AdminUserItem.
+type AdminUserItem struct {
+	GeneratedByAi  bool        `json:"generated_by_ai"`
+	HasRecap       bool        `json:"has_recap"`
+	Profile        UserProfile `json:"profile"`
+	RecapUpdatedAt *string     `json:"recap_updated_at,omitempty"`
+}
+
+// GenerateRecapRequest defines model for GenerateRecapRequest.
+type GenerateRecapRequest struct {
+	ForceRegenerate *bool `json:"force_regenerate,omitempty"`
+	UserIds         []int `json:"user_ids"`
+}
+
+// GenerateRecapResponse defines model for GenerateRecapResponse.
+type GenerateRecapResponse struct {
+	QueuedCount int    `json:"queued_count"`
+	Status      string `json:"status"`
+}
+
+// PIIPreviewResponse defines model for PIIPreviewResponse.
+type PIIPreviewResponse struct {
+	AnonymizedPromptPayload string `json:"anonymized_prompt_payload"`
+	MaskedFullName          string `json:"masked_full_name"`
+	MaskedUsername          string `json:"masked_username"`
+	OriginalFullName        string `json:"original_full_name"`
+	OriginalUsername        string `json:"original_username"`
+	UserId                  int    `json:"user_id"`
 }
 
 // RecapCard defines model for RecapCard.
@@ -90,6 +119,9 @@ type UserProfile struct {
 	UserType     string    `json:"user_type"`
 	Username     string    `json:"username"`
 }
+
+// TriggerGenerateJSONRequestBody defines body for TriggerGenerate for application/json ContentType.
+type TriggerGenerateJSONRequestBody = GenerateRecapRequest
 
 // RequestEditorFn is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -170,6 +202,30 @@ type ClientInterface interface {
 	// Corresponds with GET /api/v1/achievements/{profileId} (the `GetAchievements` operationId).
 	GetAchievements(ctx context.Context, profileId int, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// TriggerGenerateWithBody Enqueue batch AI generation tasks via RabbitMQ
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /api/v1/admin/generate (the `TriggerGenerate` operationId).
+	TriggerGenerateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// TriggerGenerate Enqueue batch AI generation tasks via RabbitMQ
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /api/v1/admin/generate (the `TriggerGenerate` operationId).
+	TriggerGenerate(ctx context.Context, body TriggerGenerateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetPIIPreview Get PII-masked prompt preview and profile data for LLM inspection
+	//
+	// Corresponds with GET /api/v1/admin/preview/{profileId} (the `GetPIIPreview` operationId).
+	GetPIIPreview(ctx context.Context, profileId int, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAdminUsers Get list of users with recap status for admin dashboard
+	//
+	// Corresponds with GET /api/v1/admin/users (the `GetAdminUsers` operationId).
+	GetAdminUsers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetProfiles Get all available test profiles
 	//
 	// Corresponds with GET /api/v1/profiles (the `GetProfiles` operationId).
@@ -191,6 +247,70 @@ type ClientInterface interface {
 // Corresponds with GET /api/v1/achievements/{profileId} (the `GetAchievements` operationId).
 func (c *Client) GetAchievements(ctx context.Context, profileId int, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetAchievementsRequest(c.Server, profileId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// TriggerGenerateWithBody Enqueue batch AI generation tasks via RabbitMQ
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /api/v1/admin/generate (the `TriggerGenerate` operationId).
+func (c *Client) TriggerGenerateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTriggerGenerateRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// TriggerGenerate Enqueue batch AI generation tasks via RabbitMQ
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /api/v1/admin/generate (the `TriggerGenerate` operationId).
+func (c *Client) TriggerGenerate(ctx context.Context, body TriggerGenerateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTriggerGenerateRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetPIIPreview Get PII-masked prompt preview and profile data for LLM inspection
+//
+// Corresponds with GET /api/v1/admin/preview/{profileId} (the `GetPIIPreview` operationId).
+func (c *Client) GetPIIPreview(ctx context.Context, profileId int, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetPIIPreviewRequest(c.Server, profileId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAdminUsers Get list of users with recap status for admin dashboard
+//
+// Corresponds with GET /api/v1/admin/users (the `GetAdminUsers` operationId).
+func (c *Client) GetAdminUsers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAdminUsersRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -263,6 +383,107 @@ func NewGetAchievementsRequest(server string, profileId int) (*http.Request, err
 	}
 
 	operationPath := fmt.Sprintf("/api/v1/achievements/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewTriggerGenerateRequest calls the generic TriggerGenerate builder with application/json body
+func NewTriggerGenerateRequest(server string, body TriggerGenerateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewTriggerGenerateRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewTriggerGenerateRequestWithBody constructs an http.Request for the TriggerGenerate method, with any body, and a specified content type
+func NewTriggerGenerateRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/admin/generate")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetPIIPreviewRequest constructs an http.Request for the GetPIIPreview method
+func NewGetPIIPreviewRequest(server string, profileId int) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "profileId", profileId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/admin/preview/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetAdminUsersRequest constructs an http.Request for the GetAdminUsers method
+func NewGetAdminUsersRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/admin/users")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -426,6 +647,34 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /api/v1/achievements/{profileId} (the `GetAchievements` operationId).
 	GetAchievementsWithResponse(ctx context.Context, profileId int, reqEditors ...RequestEditorFn) (*GetAchievementsResponse, error)
 
+	// TriggerGenerateWithBodyWithResponse Enqueue batch AI generation tasks via RabbitMQ
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/admin/generate (the `TriggerGenerate` operationId).
+	TriggerGenerateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TriggerGenerateResponse, error)
+
+	// TriggerGenerateWithResponse Enqueue batch AI generation tasks via RabbitMQ
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/admin/generate (the `TriggerGenerate` operationId).
+	TriggerGenerateWithResponse(ctx context.Context, body TriggerGenerateJSONRequestBody, reqEditors ...RequestEditorFn) (*TriggerGenerateResponse, error)
+
+	// GetPIIPreviewWithResponse Get PII-masked prompt preview and profile data for LLM inspection
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/v1/admin/preview/{profileId} (the `GetPIIPreview` operationId).
+	GetPIIPreviewWithResponse(ctx context.Context, profileId int, reqEditors ...RequestEditorFn) (*GetPIIPreviewResponse, error)
+
+	// GetAdminUsersWithResponse Get list of users with recap status for admin dashboard
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/v1/admin/users (the `GetAdminUsers` operationId).
+	GetAdminUsersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAdminUsersResponse, error)
+
 	// GetProfilesWithResponse Get all available test profiles
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -483,6 +732,129 @@ func (r GetAchievementsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetAchievementsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type TriggerGenerateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *GenerateRecapResponse
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r TriggerGenerateResponse) GetJSON202() *GenerateRecapResponse {
+	return r.JSON202
+}
+
+// GetBody returns the raw response body bytes
+func (r TriggerGenerateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r TriggerGenerateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r TriggerGenerateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r TriggerGenerateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetPIIPreviewResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PIIPreviewResponse
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetPIIPreviewResponse) GetJSON200() *PIIPreviewResponse {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r GetPIIPreviewResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetPIIPreviewResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetPIIPreviewResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetPIIPreviewResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetAdminUsersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]AdminUserItem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAdminUsersResponse) GetJSON200() *[]AdminUserItem {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAdminUsersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAdminUsersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAdminUsersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAdminUsersResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -625,6 +997,58 @@ func (c *ClientWithResponses) GetAchievementsWithResponse(ctx context.Context, p
 	return ParseGetAchievementsResponse(rsp)
 }
 
+// TriggerGenerateWithBodyWithResponse Enqueue batch AI generation tasks via RabbitMQ
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/admin/generate (the `TriggerGenerate` operationId).
+func (c *ClientWithResponses) TriggerGenerateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TriggerGenerateResponse, error) {
+	rsp, err := c.TriggerGenerateWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTriggerGenerateResponse(rsp)
+}
+
+// TriggerGenerateWithResponse Enqueue batch AI generation tasks via RabbitMQ
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/admin/generate (the `TriggerGenerate` operationId).
+func (c *ClientWithResponses) TriggerGenerateWithResponse(ctx context.Context, body TriggerGenerateJSONRequestBody, reqEditors ...RequestEditorFn) (*TriggerGenerateResponse, error) {
+	rsp, err := c.TriggerGenerate(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTriggerGenerateResponse(rsp)
+}
+
+// GetPIIPreviewWithResponse Get PII-masked prompt preview and profile data for LLM inspection
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/v1/admin/preview/{profileId} (the `GetPIIPreview` operationId).
+func (c *ClientWithResponses) GetPIIPreviewWithResponse(ctx context.Context, profileId int, reqEditors ...RequestEditorFn) (*GetPIIPreviewResponse, error) {
+	rsp, err := c.GetPIIPreview(ctx, profileId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetPIIPreviewResponse(rsp)
+}
+
+// GetAdminUsersWithResponse Get list of users with recap status for admin dashboard
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/v1/admin/users (the `GetAdminUsers` operationId).
+func (c *ClientWithResponses) GetAdminUsersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAdminUsersResponse, error) {
+	rsp, err := c.GetAdminUsers(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAdminUsersResponse(rsp)
+}
+
 // GetProfilesWithResponse Get all available test profiles
 //
 // Returns a wrapper object for the known response body format(s).
@@ -680,6 +1104,84 @@ func ParseGetAchievementsResponse(rsp *http.Response) (*GetAchievementsResponse,
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest []Achievement
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseTriggerGenerateResponse parses an HTTP response from a TriggerGenerateWithResponse call
+func ParseTriggerGenerateResponse(rsp *http.Response) (*TriggerGenerateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &TriggerGenerateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest GenerateRecapResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetPIIPreviewResponse parses an HTTP response from a GetPIIPreviewWithResponse call
+func ParseGetPIIPreviewResponse(rsp *http.Response) (*GetPIIPreviewResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetPIIPreviewResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PIIPreviewResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAdminUsersResponse parses an HTTP response from a GetAdminUsersWithResponse call
+func ParseGetAdminUsersResponse(rsp *http.Response) (*GetAdminUsersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAdminUsersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []AdminUserItem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -776,6 +1278,15 @@ type ServerInterface interface {
 	// GetAchievements Get user achievements with progress and CTA links
 	// (GET /api/v1/achievements/{profileId})
 	GetAchievements(w http.ResponseWriter, r *http.Request, profileId int)
+	// TriggerGenerate Enqueue batch AI generation tasks via RabbitMQ
+	// (POST /api/v1/admin/generate)
+	TriggerGenerate(w http.ResponseWriter, r *http.Request)
+	// GetPIIPreview Get PII-masked prompt preview and profile data for LLM inspection
+	// (GET /api/v1/admin/preview/{profileId})
+	GetPIIPreview(w http.ResponseWriter, r *http.Request, profileId int)
+	// GetAdminUsers Get list of users with recap status for admin dashboard
+	// (GET /api/v1/admin/users)
+	GetAdminUsers(w http.ResponseWriter, r *http.Request)
 	// GetProfiles Get all available test profiles
 	// (GET /api/v1/profiles)
 	GetProfiles(w http.ResponseWriter, r *http.Request)
@@ -794,6 +1305,24 @@ type Unimplemented struct{}
 // GetAchievements Get user achievements with progress and CTA links
 // (GET /api/v1/achievements/{profileId})
 func (_ Unimplemented) GetAchievements(w http.ResponseWriter, r *http.Request, profileId int) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// TriggerGenerate Enqueue batch AI generation tasks via RabbitMQ
+// (POST /api/v1/admin/generate)
+func (_ Unimplemented) TriggerGenerate(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetPIIPreview Get PII-masked prompt preview and profile data for LLM inspection
+// (GET /api/v1/admin/preview/{profileId})
+func (_ Unimplemented) GetPIIPreview(w http.ResponseWriter, r *http.Request, profileId int) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetAdminUsers Get list of users with recap status for admin dashboard
+// (GET /api/v1/admin/users)
+func (_ Unimplemented) GetAdminUsers(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -841,6 +1370,60 @@ func (siw *ServerInterfaceWrapper) GetAchievements(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetAchievements(w, r, profileId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// TriggerGenerate operation middleware
+func (siw *ServerInterfaceWrapper) TriggerGenerate(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.TriggerGenerate(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetPIIPreview operation middleware
+func (siw *ServerInterfaceWrapper) GetPIIPreview(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "profileId" -------------
+	var profileId int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "profileId", chi.URLParam(r, "profileId"), &profileId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "profileId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetPIIPreview(w, r, profileId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAdminUsers operation middleware
+func (siw *ServerInterfaceWrapper) GetAdminUsers(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAdminUsers(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1041,6 +1624,15 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/share/{shareToken}", wrapper.GetShareCard)
 	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/admin/users", wrapper.GetAdminUsers)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/admin/generate", wrapper.TriggerGenerate)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/admin/preview/{profileId}", wrapper.GetPIIPreview)
+	})
 
 	return r
 }
@@ -1056,6 +1648,71 @@ type GetAchievementsResponseObject interface {
 type GetAchievements200JSONResponse []Achievement
 
 func (response GetAchievements200JSONResponse) VisitGetAchievementsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TriggerGenerateRequestObject struct {
+	Body *TriggerGenerateJSONRequestBody
+}
+
+type TriggerGenerateResponseObject interface {
+	VisitTriggerGenerateResponse(w http.ResponseWriter) error
+}
+
+type TriggerGenerate202JSONResponse GenerateRecapResponse
+
+func (response TriggerGenerate202JSONResponse) VisitTriggerGenerateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPIIPreviewRequestObject struct {
+	ProfileId int `json:"profileId"`
+}
+
+type GetPIIPreviewResponseObject interface {
+	VisitGetPIIPreviewResponse(w http.ResponseWriter) error
+}
+
+type GetPIIPreview200JSONResponse PIIPreviewResponse
+
+func (response GetPIIPreview200JSONResponse) VisitGetPIIPreviewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAdminUsersRequestObject struct {
+}
+
+type GetAdminUsersResponseObject interface {
+	VisitGetAdminUsersResponse(w http.ResponseWriter) error
+}
+
+type GetAdminUsers200JSONResponse []AdminUserItem
+
+func (response GetAdminUsers200JSONResponse) VisitGetAdminUsersResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -1145,6 +1802,15 @@ type StrictServerInterface interface {
 	// GetAchievements Get user achievements with progress and CTA links
 	// (GET /api/v1/achievements/{profileId})
 	GetAchievements(ctx context.Context, request GetAchievementsRequestObject) (GetAchievementsResponseObject, error)
+	// TriggerGenerate Enqueue batch AI generation tasks via RabbitMQ
+	// (POST /api/v1/admin/generate)
+	TriggerGenerate(ctx context.Context, request TriggerGenerateRequestObject) (TriggerGenerateResponseObject, error)
+	// GetPIIPreview Get PII-masked prompt preview and profile data for LLM inspection
+	// (GET /api/v1/admin/preview/{profileId})
+	GetPIIPreview(ctx context.Context, request GetPIIPreviewRequestObject) (GetPIIPreviewResponseObject, error)
+	// GetAdminUsers Get list of users with recap status for admin dashboard
+	// (GET /api/v1/admin/users)
+	GetAdminUsers(ctx context.Context, request GetAdminUsersRequestObject) (GetAdminUsersResponseObject, error)
 	// GetProfiles Get all available test profiles
 	// (GET /api/v1/profiles)
 	GetProfiles(ctx context.Context, request GetProfilesRequestObject) (GetProfilesResponseObject, error)
@@ -1214,6 +1880,87 @@ func (sh *strictHandler) GetAchievements(w http.ResponseWriter, r *http.Request,
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetAchievementsResponseObject); ok {
 		if err := validResponse.VisitGetAchievementsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// TriggerGenerate operation middleware
+func (sh *strictHandler) TriggerGenerate(w http.ResponseWriter, r *http.Request) {
+	var request TriggerGenerateRequestObject
+
+	var body TriggerGenerateJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.TriggerGenerate(ctx, request.(TriggerGenerateRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "TriggerGenerate")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(TriggerGenerateResponseObject); ok {
+		if err := validResponse.VisitTriggerGenerateResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetPIIPreview operation middleware
+func (sh *strictHandler) GetPIIPreview(w http.ResponseWriter, r *http.Request, profileId int) {
+	var request GetPIIPreviewRequestObject
+
+	request.ProfileId = profileId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetPIIPreview(ctx, request.(GetPIIPreviewRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetPIIPreview")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetPIIPreviewResponseObject); ok {
+		if err := validResponse.VisitGetPIIPreviewResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetAdminUsers operation middleware
+func (sh *strictHandler) GetAdminUsers(w http.ResponseWriter, r *http.Request) {
+	var request GetAdminUsersRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetAdminUsers(ctx, request.(GetAdminUsersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetAdminUsers")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetAdminUsersResponseObject); ok {
+		if err := validResponse.VisitGetAdminUsersResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

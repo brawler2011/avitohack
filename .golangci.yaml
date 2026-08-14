@@ -11,8 +11,3 @@ linters:
     - misspell
     - unconvert
 
-issues:
-  exclude-dirs:
-    - pkg/api
-    - internal/repository/pg/sqlc
-

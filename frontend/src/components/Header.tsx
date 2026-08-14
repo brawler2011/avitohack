@@ -12,15 +12,15 @@ interface HeaderProps {
   profiles: UserProfile[];
   selectedProfileId: number;
   onSelectProfile: (id: number) => void;
-  activeView: 'feed' | 'stories' | 'achievements';
-  onChangeView: (view: 'feed' | 'stories' | 'achievements') => void;
+  activeView: 'feed' | 'stories' | 'achievements' | 'admin';
+  onChangeView: (view: 'feed' | 'stories' | 'achievements' | 'admin') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   profiles,
   selectedProfileId,
   onSelectProfile,
-  activeView: _activeView,
+  activeView,
   onChangeView,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,8 +49,8 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="w-full bg-white text-[#222222] font-sans shadow-xs border-b border-[#e3e5e8] sticky top-0 z-40">
-      {/* Main Header (Logo, All Categories, Search Bar, User Profile with Dropdown) */}
-      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+      {/* Main Header (Logo, All Categories, Search Bar, Admin Button, User Profile) */}
+      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3 sm:gap-4">
         {/* Authentic Avito Brand & Logo */}
         <div
           onClick={() => onChangeView('feed')}
@@ -59,14 +59,14 @@ export const Header: React.FC<HeaderProps> = ({
           <img src="/logo.svg" alt="Авито" className="h-[30px] w-auto" />
         </div>
 
-        {/* All Categories Button (Cyan Blue #00a0ff) */}
-        <button className="hidden sm:flex items-center gap-2 bg-[#00a0ff] hover:bg-[#0088d6] text-white font-extrabold text-sm px-4 py-2.5 rounded-xl transition-all shadow-xs shrink-0">
+        {/* All Categories Button */}
+        <button className="hidden sm:flex items-center gap-2 bg-[#00a0ff] hover:bg-[#0088d6] text-white font-extrabold text-sm px-4 py-2.5 rounded-xl transition-all shadow-xs shrink-0 cursor-pointer">
           <LayoutGrid className="w-4 h-4" />
           <span>Все категории</span>
         </button>
 
-        {/* Search Bar with Cyan Blue Border & Search Button */}
-        <form onSubmit={handleSearch} className="flex-1 max-w-2xl flex items-center">
+        {/* Search Bar */}
+        <form onSubmit={handleSearch} className="flex-1 max-w-xl flex items-center">
           <div className="relative w-full flex items-center border-2 border-[#00a0ff] rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-[#00a0ff]/20">
             <div className="pl-3 text-[#757575]">
               <Search className="w-4 h-4" />
@@ -80,12 +80,24 @@ export const Header: React.FC<HeaderProps> = ({
             />
             <button
               type="submit"
-              className="bg-[#00a0ff] hover:bg-[#0088d6] text-white px-6 py-2 font-extrabold text-sm flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer"
+              className="bg-[#00a0ff] hover:bg-[#0088d6] text-white px-5 py-2 font-extrabold text-sm flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer"
             >
               <span>Найти</span>
             </button>
           </div>
         </form>
+
+        {/* Admin Dashboard Button */}
+        <button
+          onClick={() => onChangeView('admin')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition-all border shrink-0 cursor-pointer ${
+            activeView === 'admin'
+              ? 'bg-red-700 text-white border-red-700 shadow-sm ring-2 ring-red-500/30'
+              : 'bg-red-600 hover:bg-red-700 text-white border-red-600'
+          }`}
+        >
+          <span>ADMIN</span>
+        </button>
 
         {/* Current User Profile Display with Account Switcher Dropdown */}
         <div className="relative shrink-0 border-l border-[#e5e7eb] pl-3" ref={dropdownRef}>

@@ -34,6 +34,18 @@ export const ShareCardModal: React.FC<ShareCardModalProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleShareTelegram = () => {
+    const text = encodeURIComponent(`Посмотрите мои Итоги 2024 года на Авито! ✨`);
+    const url = encodeURIComponent(shareUrl);
+    window.open(`https://t.me/share/url?url=${url}&text=${text}`, '_blank');
+  };
+
+  const handleShareVK = () => {
+    const url = encodeURIComponent(shareUrl);
+    const title = encodeURIComponent(`Мои Авито Итоги 2024`);
+    window.open(`https://vk.com/share.php?url=${url}&title=${title}`, '_blank');
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn font-sans">
       <div className="bg-white border border-[#e3e5e8] rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-5 text-[#222222]">
@@ -114,23 +126,41 @@ export const ShareCardModal: React.FC<ShareCardModalProps> = ({
           <span>Безопасная карточка: суммарные траты и личные сообщения скрыты.</span>
         </div>
 
-        {/* Copy Button */}
-        <button
-          onClick={handleCopy}
-          className="w-full flex items-center justify-center gap-2 py-3 bg-[#00aa5b] hover:bg-[#009650] text-white font-extrabold rounded-xl shadow-md transition-all"
-        >
-          {copied ? (
-            <>
-              <Check className="w-5 h-5 text-white" />
-              Ссылка скопирована!
-            </>
-          ) : (
-            <>
-              <Copy className="w-5 h-5" />
-              Скопировать ссылку для соцсетей
-            </>
-          )}
-        </button>
+        {/* Social & Copy Buttons */}
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={handleShareTelegram}
+              className="py-2.5 bg-[#229ED9]/10 hover:bg-[#229ED9]/20 text-[#229ED9] border border-[#229ED9]/20 font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              Telegram
+            </button>
+            <button
+              onClick={handleShareVK}
+              className="py-2.5 bg-[#0077FF]/10 hover:bg-[#0077FF]/20 text-[#0077FF] border border-[#0077FF]/20 font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              ВКонтакте
+            </button>
+          </div>
+          <button
+            onClick={handleCopy}
+            className="w-full flex items-center justify-center gap-2 py-3 bg-[#00aa5b] hover:bg-[#009650] text-white font-extrabold rounded-xl shadow-md transition-all text-sm"
+          >
+            {copied ? (
+              <>
+                <Check className="w-5 h-5 text-white" />
+                Ссылка скопирована!
+              </>
+            ) : (
+              <>
+                <Copy className="w-5 h-5" />
+                Скопировать ссылку
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

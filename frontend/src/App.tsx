@@ -144,7 +144,22 @@ export const App: React.FC = () => {
   // Fetch recap when profile changes
   useEffect(() => {
     if (!selectedProfileId) return;
-    loadRecap(selectedProfileId);
+    let isCancelled = false;
+    fetchRecap(selectedProfileId)
+      .then((data) => {
+        if (!isCancelled) {
+          setRecapData(data);
+        }
+      })
+      .catch(console.error)
+      .finally(() => {
+        if (!isCancelled) {
+          setLoading(false);
+        }
+      });
+    return () => {
+      isCancelled = true;
+    };
   }, [selectedProfileId]);
 
   const markRecapViewed = (profileId: number) => {

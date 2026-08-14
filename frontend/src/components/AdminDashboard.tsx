@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   AdminUserItem,
   PIIPreviewData,
@@ -48,23 +48,53 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [liveLogs, setLiveLogs] = useState<WSEventMessage[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
 
-  const loadUsers = async () => {
+  const onRecapUpdatedRef = useRef(onRecapUpdated);
+  useEffect(() => {
+    onRecapUpdatedRef.current = onRecapUpdated;
+  }, [onRecapUpdated]);
+
+  const loadUsers = useCallback(async () => {
     try {
-      setLoading(true);
-      setError(null);
       const data = await fetchAdminUsers();
       setUsers(data);
+      setError(null);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Ошибка загрузки пользователей';
       setError(msg);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadUsers();
+    let isCancelled = false;
+    fetchAdminUsers()
+      .then((data) => {
+        if (!isCancelled) {
+          setUsers(data);
+          setError(null);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!isCancelled) {
+          const msg = err instanceof Error ? err.message : 'Ошибка загрузки пользователей';
+          setError(msg);
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setLoading(false);
+        }
+      });
+    return () => {
+      isCancelled = true;
+    };
   }, []);
+
+  const handleRefreshUsers = () => {
+    setLoading(true);
+    loadUsers();
+  };
 
   // WebSocket Connection Lifecycle
   useEffect(() => {
@@ -104,8 +134,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               setGeneratingUserIds((prev) => prev.filter((id) => id !== data.user_id));
               setQueuedUserIds((prev) => prev.filter((id) => id !== data.user_id));
               loadUsers();
-              if (data.status === 'COMPLETED' && onRecapUpdated) {
-                onRecapUpdated(data.user_id);
+              if (data.status === 'COMPLETED' && onRecapUpdatedRef.current) {
+                onRecapUpdatedRef.current(data.user_id);
               }
             }
           } catch (e) {
@@ -143,7 +173,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         wsRef.current = null;
       }
     };
-  }, []);
+  }, [loadUsers]);
 
   const handleGenerateSingle = async (userId: number, force = false) => {
     try {
@@ -217,7 +247,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
 
           <button
-            onClick={loadUsers}
+            onClick={handleRefreshUsers}
             className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 text-gray-800 rounded-xl text-sm font-semibold transition-all border border-gray-200 shadow-xs cursor-pointer"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />

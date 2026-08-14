@@ -59,6 +59,8 @@ services:
       - "${PORT:-8080}"
     env_file:
       - .env
+    volumes:
+      - ./data:/data:ro
     environment:
       PORT: "${PORT:-8080}"
       DATABASE_URL: "postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgrespassword}@postgres:5432/${POSTGRES_DB:-avitohack}?sslmode=disable"
@@ -66,8 +68,6 @@ services:
       REDIS_URL: "redis://redis:6379"
       CSV_USERS_PATH: "/data/users.csv"
       CSV_ACTIVITIES_PATH: "/data/user_activities.csv"
-      OPENROUTER_API_KEY: "${OPENROUTER_API_KEY}"
-      OPENROUTER_MODEL: "${OPENROUTER_MODEL:-gemini-2.5-flash}"
     depends_on:
       postgres:
         condition: service_healthy

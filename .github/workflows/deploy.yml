@@ -122,6 +122,9 @@ jobs:
             cat << 'EOF' > .env
             ${{ secrets.PROD_ENV_FILE }}
             EOF
+            if [ -n "${{ secrets.OPENROUTER_API_KEY }}" ]; then
+              echo "OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}" >> .env
+            fi
             docker compose -f docker-compose.server.yml pull
             docker compose -f docker-compose.server.yml up -d --remove-orphans
             docker image prune -f

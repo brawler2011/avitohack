@@ -37,7 +37,7 @@ export const AvitoMainFeed: React.FC<AvitoMainFeedProps> = ({
     {
       title: "Запчасти",
       bg: "#f4f5f7",
-      img: "/images/zapchasti.jpg",
+      img: "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=300&auto=format&fit=crop&q=80",
     },
     {
       title: "Услуги",
@@ -100,7 +100,8 @@ export const AvitoMainFeed: React.FC<AvitoMainFeedProps> = ({
       price: "3 200 ₽",
       location: "Москва, р-н Арбат",
       date: "Вчера, 19:40",
-      image: "/images/panno.jpg",
+      image:
+        "https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=400&auto=format&fit=crop&q=80",
     },
     {
       id: 4,

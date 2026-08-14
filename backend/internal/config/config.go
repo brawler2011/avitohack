@@ -68,7 +68,7 @@ func Load() *Config {
 	openRouterKey := strings.TrimSpace(os.Getenv("OPENROUTER_API_KEY"))
 	openRouterModel := strings.TrimSpace(os.Getenv("OPENROUTER_MODEL"))
 	if openRouterModel == "" {
-		openRouterModel = "google/gemini-2.0-flash-001"
+		openRouterModel = "gemini-2.5-flash"
 	}
 
 	return &Config{

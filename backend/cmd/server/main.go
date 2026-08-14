@@ -74,9 +74,9 @@ func main() {
 
 	llmGen := service.NewLLMGenerator(cfg.OpenRouterAPIKey, cfg.OpenRouterModel)
 	if llmGen.IsAvailable() {
-		slog.Info("OpenRouter LLM generator initialized", slog.String("model", cfg.OpenRouterModel))
+		slog.Info("ProxyAPI LLM generator initialized", slog.String("model", cfg.OpenRouterModel))
 	} else {
-		slog.Warn("OpenRouter API key is not set. Service will use template fallback.")
+		slog.Warn("ProxyAPI API key (OPENROUTER_API_KEY) is not set. Service will use template fallback.")
 	}
 
 	// Initialize WebSocket Hub

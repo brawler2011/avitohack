@@ -254,7 +254,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <span>Обновить</span>
           </button>
         </div>
-        {/* OpenRouter API Budget Warning Banner */}
+        {/* ProxyAPI Budget Warning Banner */}
         <div className="bg-amber-500/10 border-2 border-amber-500/40 rounded-2xl p-4 sm:p-5 shadow-xs flex items-start gap-4 text-amber-900 bg-amber-50">
           <div className="p-2.5 bg-amber-500 text-white rounded-xl shrink-0 shadow-xs">
             <ShieldAlert className="w-6 h-6" />
@@ -263,11 +263,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <h3 className="font-extrabold text-base text-amber-950 flex items-center gap-2">
               <span>⚠️ Важное предупреждение по балансу API</span>
               <span className="text-xs font-semibold bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full">
-                OpenRouter API
+                ProxyAPI
               </span>
             </h3>
             <p className="text-sm text-amber-900 mt-1 leading-relaxed">
-              У нас <strong>лимитированное количество денег и токенов</strong> на OpenRouter. Пожалуйста, <strong>не спамьте частыми генерациями</strong> без необходимости. Перед отправкой больших пакетов проверяйте готовые карточки.
+              У нас <strong>лимитированное количество денег и токенов</strong> на ProxyAPI. Пожалуйста, <strong>не спамьте частыми генерациями</strong> без необходимости. Перед отправкой больших пакетов проверяйте готовые карточки.
             </p>
           </div>
         </div>

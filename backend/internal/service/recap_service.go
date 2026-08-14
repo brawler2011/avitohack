@@ -442,7 +442,7 @@ func (s *RecapService) GenerateAndStoreRecapForUser(ctx context.Context, userID 
 	}
 
 	if s.wsHub != nil {
-		s.wsHub.BroadcastEvent(userID, "PROCESSING", "Запущена генерация в ИИ (OpenRouter)...")
+		s.wsHub.BroadcastEvent(userID, "PROCESSING", "Запущена генерация в ИИ (ProxyAPI)...")
 	}
 
 	activities, err := s.queries.GetUserActivities(ctx, int32(userID))
@@ -488,14 +488,14 @@ func (s *RecapService) GenerateAndStoreRecapForUser(ctx context.Context, userID 
 	var aiResult *domain.AISummaryResult
 
 	if s.llmGen != nil && s.llmGen.IsAvailable() {
-		slog.Info("Generating recap using OpenRouter LLM", slog.Int("user_id", userID), slog.String("masked_name", maskedFullName))
+		slog.Info("Generating recap using ProxyAPI LLM", slog.Int("user_id", userID), slog.String("masked_name", maskedFullName))
 		llmRes, llmErr := s.llmGen.GenerateRecap(ctx, maskedFullName, user.UserType, metrics)
 		if llmErr == nil && llmRes != nil {
 			cards = llmRes.Cards
 			achievements = llmRes.Achievements
 			aiResult = &llmRes.AISummary
 		} else {
-			slog.Warn("OpenRouter generation error, using template fallback", slog.Int("user_id", userID), slog.Any("error", llmErr))
+			slog.Warn("ProxyAPI generation error, using template fallback", slog.Int("user_id", userID), slog.Any("error", llmErr))
 		}
 	}
 

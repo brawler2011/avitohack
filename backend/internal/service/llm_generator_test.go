@@ -25,21 +25,21 @@ func TestLLMGenerator_IsAvailable(t *testing.T) {
 			apiKey:        "",
 			model:         "",
 			expectedAvail: false,
-			expectedModel: "google/gemini-2.0-flash-001",
+			expectedModel: "gemini-2.5-flash",
 		},
 		{
 			name:          "api key set with default model fallback",
 			apiKey:        "test-api-key",
 			model:         "",
 			expectedAvail: true,
-			expectedModel: "google/gemini-2.0-flash-001",
+			expectedModel: "gemini-2.5-flash",
 		},
 		{
-			name:          "api key set with explicit model override",
+			name:          "api key set with gemini model strips vendor prefix",
 			apiKey:        "sk-or-v1-12345",
-			model:         "openai/gpt-4o-mini",
+			model:         "google/gemini-2.5-flash",
 			expectedAvail: true,
-			expectedModel: "openai/gpt-4o-mini",
+			expectedModel: "gemini-2.5-flash",
 		},
 	}
 
@@ -54,7 +54,7 @@ func TestLLMGenerator_IsAvailable(t *testing.T) {
 	}
 }
 
-func TestLLMGenerator_ParseOpenRouterResponseBody(t *testing.T) {
+func TestLLMGenerator_ParseProxyAPIResponseBody(t *testing.T) {
 	t.Parallel()
 
 	validContentJSON := `{"ai_summary":{"title":"Главный Торговец","story":"Отличный год на Авито!","archetype":"Профи-Продавец","generated_by_ai":true},"cards":[{"id":"card_1","card_type":"welcome","title":"Привет!","subtitle":"Итоги","highlight_stat":"Профи","description":"Отличная работа","bg_gradient":"from-emerald-600 to-teal-700","icon_name":"sparkles","explanation":"Тест"}],"achievements":[{"id":"ach_1","code":"SUPER_SELLER","name":"Супер Продавец","description":"Продали много товаров","badge_icon":"trophy","level":3,"current_progress":10,"max_progress":10,"is_unlocked":true,"cta_text":"Продолжить","cta_action":"/add-item","explanation":"Вы продали 10 товаров"}]}`
@@ -68,7 +68,7 @@ func TestLLMGenerator_ParseOpenRouterResponseBody(t *testing.T) {
 		expectedAchN  int
 	}{
 		{
-			name: "successful openrouter response parsing",
+			name: "successful proxyapi response parsing",
 			rawResponse: fmt.Sprintf(`{
 				"choices": [
 					{
@@ -127,9 +127,9 @@ func TestLLMGenerator_ParseOpenRouterResponseBody(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			gen := NewLLMGenerator("test-key", "google/gemini-2.0-flash-001")
+			gen := NewLLMGenerator("test-key", "google/gemini-2.5-flash")
 
-			res, err := gen.parseOpenRouterResponseBody([]byte(tt.rawResponse))
+			res, err := gen.parseProxyAPIResponseBody([]byte(tt.rawResponse))
 			if tt.expectErr {
 				assert.Error(t, err)
 				assert.Nil(t, res)
@@ -145,8 +145,8 @@ func TestLLMGenerator_ParseOpenRouterResponseBody(t *testing.T) {
 	}
 }
 
-func (g *LLMGenerator) parseOpenRouterResponseBody(respBytes []byte) (*LLMRecapResult, error) {
-	var parsedResp openRouterResponse
+func (g *LLMGenerator) parseProxyAPIResponseBody(respBytes []byte) (*LLMRecapResult, error) {
+	var parsedResp proxyAPIResponse
 	if err := json.Unmarshal(respBytes, &parsedResp); err != nil {
 		return nil, err
 	}

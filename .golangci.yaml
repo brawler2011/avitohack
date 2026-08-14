@@ -1,4 +1,5 @@
 version: "2"
+
 run:
   timeout: 5m
 
@@ -11,9 +12,4 @@ linters:
     - unused
     - misspell
     - unconvert
-
-issues:
-  exclude-dirs:
-    - pkg/api
-    - internal/repository/pg/sqlc
 

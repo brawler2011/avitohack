@@ -54,17 +54,9 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Authentic Avito Brand & Logo */}
         <div
           onClick={() => onChangeView('feed')}
-          className="flex items-center gap-2 shrink-0 cursor-pointer select-none"
+          className="flex items-center shrink-0 cursor-pointer select-none"
         >
-          <div className="flex items-center gap-1">
-            <span className="w-3.5 h-3.5 rounded-full bg-[#00CC76]"></span>
-            <span className="w-3.5 h-3.5 rounded-full bg-[#FF4053]"></span>
-            <span className="w-3.5 h-3.5 rounded-full bg-[#00AAFF]"></span>
-            <span className="w-3.5 h-3.5 rounded-full bg-[#9A41FE]"></span>
-          </div>
-          <span className="text-3xl font-black text-[#222222] tracking-tighter font-sans lowercase">
-            Avito
-          </span>
+          <img src="/logo.svg" alt="Авито" className="h-[30px] w-auto" />
         </div>
 
         {/* All Categories Button (Cyan Blue #00a0ff) */}

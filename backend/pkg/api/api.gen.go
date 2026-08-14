@@ -202,6 +202,11 @@ type ClientInterface interface {
 	// Corresponds with GET /api/v1/achievements/{profileId} (the `GetAchievements` operationId).
 	GetAchievements(ctx context.Context, profileId int, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// FlushCache Flush all cached items in Redis
+	//
+	// Corresponds with POST /api/v1/admin/cache/flush (the `FlushCache` operationId).
+	FlushCache(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// TriggerGenerateWithBody Enqueue batch AI generation tasks via RabbitMQ
 	//
 	// Takes any type of body and a specified content type.
@@ -247,6 +252,21 @@ type ClientInterface interface {
 // Corresponds with GET /api/v1/achievements/{profileId} (the `GetAchievements` operationId).
 func (c *Client) GetAchievements(ctx context.Context, profileId int, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetAchievementsRequest(c.Server, profileId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// FlushCache Flush all cached items in Redis
+//
+// Corresponds with POST /api/v1/admin/cache/flush (the `FlushCache` operationId).
+func (c *Client) FlushCache(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewFlushCacheRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -393,6 +413,33 @@ func NewGetAchievementsRequest(server string, profileId int) (*http.Request, err
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewFlushCacheRequest constructs an http.Request for the FlushCache method
+func NewFlushCacheRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/admin/cache/flush")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -647,6 +694,13 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /api/v1/achievements/{profileId} (the `GetAchievements` operationId).
 	GetAchievementsWithResponse(ctx context.Context, profileId int, reqEditors ...RequestEditorFn) (*GetAchievementsResponse, error)
 
+	// FlushCacheWithResponse Flush all cached items in Redis
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/admin/cache/flush (the `FlushCache` operationId).
+	FlushCacheWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*FlushCacheResponse, error)
+
 	// TriggerGenerateWithBodyWithResponse Enqueue batch AI generation tasks via RabbitMQ
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -732,6 +786,53 @@ func (r GetAchievementsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetAchievementsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type FlushCacheResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Message *string `json:"message,omitempty"`
+		Status  *string `json:"status,omitempty"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r FlushCacheResponse) GetJSON200() *struct {
+	Message *string `json:"message,omitempty"`
+	Status  *string `json:"status,omitempty"`
+} {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r FlushCacheResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r FlushCacheResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r FlushCacheResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r FlushCacheResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -997,6 +1098,19 @@ func (c *ClientWithResponses) GetAchievementsWithResponse(ctx context.Context, p
 	return ParseGetAchievementsResponse(rsp)
 }
 
+// FlushCacheWithResponse Flush all cached items in Redis
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/admin/cache/flush (the `FlushCache` operationId).
+func (c *ClientWithResponses) FlushCacheWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*FlushCacheResponse, error) {
+	rsp, err := c.FlushCache(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseFlushCacheResponse(rsp)
+}
+
 // TriggerGenerateWithBodyWithResponse Enqueue batch AI generation tasks via RabbitMQ
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -1104,6 +1218,35 @@ func ParseGetAchievementsResponse(rsp *http.Response) (*GetAchievementsResponse,
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest []Achievement
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseFlushCacheResponse parses an HTTP response from a FlushCacheWithResponse call
+func ParseFlushCacheResponse(rsp *http.Response) (*FlushCacheResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &FlushCacheResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Message *string `json:"message,omitempty"`
+			Status  *string `json:"status,omitempty"`
+		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1278,6 +1421,9 @@ type ServerInterface interface {
 	// GetAchievements Get user achievements with progress and CTA links
 	// (GET /api/v1/achievements/{profileId})
 	GetAchievements(w http.ResponseWriter, r *http.Request, profileId int)
+	// FlushCache Flush all cached items in Redis
+	// (POST /api/v1/admin/cache/flush)
+	FlushCache(w http.ResponseWriter, r *http.Request)
 	// TriggerGenerate Enqueue batch AI generation tasks via RabbitMQ
 	// (POST /api/v1/admin/generate)
 	TriggerGenerate(w http.ResponseWriter, r *http.Request)
@@ -1305,6 +1451,12 @@ type Unimplemented struct{}
 // GetAchievements Get user achievements with progress and CTA links
 // (GET /api/v1/achievements/{profileId})
 func (_ Unimplemented) GetAchievements(w http.ResponseWriter, r *http.Request, profileId int) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// FlushCache Flush all cached items in Redis
+// (POST /api/v1/admin/cache/flush)
+func (_ Unimplemented) FlushCache(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1370,6 +1522,20 @@ func (siw *ServerInterfaceWrapper) GetAchievements(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetAchievements(w, r, profileId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// FlushCache operation middleware
+func (siw *ServerInterfaceWrapper) FlushCache(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.FlushCache(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1633,6 +1799,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/admin/preview/{profileId}", wrapper.GetPIIPreview)
 	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/admin/cache/flush", wrapper.FlushCache)
+	})
 
 	return r
 }
@@ -1648,6 +1817,30 @@ type GetAchievementsResponseObject interface {
 type GetAchievements200JSONResponse []Achievement
 
 func (response GetAchievements200JSONResponse) VisitGetAchievementsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type FlushCacheRequestObject struct {
+}
+
+type FlushCacheResponseObject interface {
+	VisitFlushCacheResponse(w http.ResponseWriter) error
+}
+
+type FlushCache200JSONResponse struct {
+	Message *string `json:"message,omitempty"`
+	Status  *string `json:"status,omitempty"`
+}
+
+func (response FlushCache200JSONResponse) VisitFlushCacheResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -1802,6 +1995,9 @@ type StrictServerInterface interface {
 	// GetAchievements Get user achievements with progress and CTA links
 	// (GET /api/v1/achievements/{profileId})
 	GetAchievements(ctx context.Context, request GetAchievementsRequestObject) (GetAchievementsResponseObject, error)
+	// FlushCache Flush all cached items in Redis
+	// (POST /api/v1/admin/cache/flush)
+	FlushCache(ctx context.Context, request FlushCacheRequestObject) (FlushCacheResponseObject, error)
 	// TriggerGenerate Enqueue batch AI generation tasks via RabbitMQ
 	// (POST /api/v1/admin/generate)
 	TriggerGenerate(ctx context.Context, request TriggerGenerateRequestObject) (TriggerGenerateResponseObject, error)
@@ -1880,6 +2076,30 @@ func (sh *strictHandler) GetAchievements(w http.ResponseWriter, r *http.Request,
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetAchievementsResponseObject); ok {
 		if err := validResponse.VisitGetAchievementsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// FlushCache operation middleware
+func (sh *strictHandler) FlushCache(w http.ResponseWriter, r *http.Request) {
+	var request FlushCacheRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.FlushCache(ctx, request.(FlushCacheRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "FlushCache")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(FlushCacheResponseObject); ok {
+		if err := validResponse.VisitFlushCacheResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

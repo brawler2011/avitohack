@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/avitohack/backend/internal/cache"
 	"github.com/avitohack/backend/internal/domain"
 	"github.com/avitohack/backend/internal/queue"
 	"github.com/avitohack/backend/internal/repository/pg/sqlc"
@@ -22,14 +23,16 @@ type RecapService struct {
 	llmGen   *LLMGenerator
 	queueSvc *queue.QueueService
 	wsHub    *ws.Hub
+	cacheSvc *cache.CacheService
 }
 
-func NewRecapService(queries sqlc.Querier, llmGen *LLMGenerator, queueSvc *queue.QueueService, wsHub *ws.Hub) *RecapService {
+func NewRecapService(queries sqlc.Querier, llmGen *LLMGenerator, queueSvc *queue.QueueService, wsHub *ws.Hub, cacheSvc *cache.CacheService) *RecapService {
 	return &RecapService{
 		queries:  queries,
 		llmGen:   llmGen,
 		queueSvc: queueSvc,
 		wsHub:    wsHub,
+		cacheSvc: cacheSvc,
 	}
 }
 
@@ -42,6 +45,14 @@ func AnonymizePII(userID int32, fullName, username string) (maskedFullName, mask
 }
 
 func (s *RecapService) GetProfiles(ctx context.Context, request api.GetProfilesRequestObject) (api.GetProfilesResponseObject, error) {
+	cacheKey := "avitohack:profiles:all"
+	if s.cacheSvc != nil {
+		var cachedProfiles []api.UserProfile
+		if s.cacheSvc.Get(ctx, cacheKey, &cachedProfiles) {
+			return api.GetProfiles200JSONResponse(cachedProfiles), nil
+		}
+	}
+
 	if s.queries == nil {
 		return nil, fmt.Errorf("database connection unavailable")
 	}
@@ -62,10 +73,22 @@ func (s *RecapService) GetProfiles(ctx context.Context, request api.GetProfilesR
 		})
 	}
 
+	if s.cacheSvc != nil {
+		s.cacheSvc.Set(ctx, cacheKey, profiles, 15*time.Minute)
+	}
+
 	return api.GetProfiles200JSONResponse(profiles), nil
 }
 
 func (s *RecapService) GetRecap(ctx context.Context, request api.GetRecapRequestObject) (api.GetRecapResponseObject, error) {
+	cacheKey := fmt.Sprintf("avitohack:recap:profile:%d", request.ProfileId)
+	if s.cacheSvc != nil {
+		var cachedResp api.GetRecap200JSONResponse
+		if s.cacheSvc.Get(ctx, cacheKey, &cachedResp) {
+			return cachedResp, nil
+		}
+	}
+
 	if s.queries == nil {
 		return nil, fmt.Errorf("database connection unavailable")
 	}
@@ -150,7 +173,7 @@ func (s *RecapService) GetRecap(ctx context.Context, request api.GetRecapRequest
 		cards = BuildRecapCards(user.FullName, metrics, aiResult.Title, aiResult.Story, aiResult.Archetype, achievements)
 	}
 
-	return api.GetRecap200JSONResponse{
+	resp := api.GetRecap200JSONResponse{
 		Profile: api.UserProfile{
 			Id:           int(user.ID),
 			Username:     user.Username,
@@ -172,10 +195,24 @@ func (s *RecapService) GetRecap(ctx context.Context, request api.GetRecapRequest
 		Cards:        cards,
 		Achievements: achievements,
 		ShareToken:   shareToken,
-	}, nil
+	}
+
+	if s.cacheSvc != nil {
+		s.cacheSvc.Set(ctx, cacheKey, resp, 30*time.Minute)
+	}
+
+	return resp, nil
 }
 
 func (s *RecapService) GetAchievements(ctx context.Context, request api.GetAchievementsRequestObject) (api.GetAchievementsResponseObject, error) {
+	cacheKey := fmt.Sprintf("avitohack:achievements:profile:%d", request.ProfileId)
+	if s.cacheSvc != nil {
+		var cachedAchs []api.Achievement
+		if s.cacheSvc.Get(ctx, cacheKey, &cachedAchs) {
+			return api.GetAchievements200JSONResponse(cachedAchs), nil
+		}
+	}
+
 	if s.queries == nil {
 		return nil, fmt.Errorf("database connection unavailable")
 	}
@@ -184,6 +221,9 @@ func (s *RecapService) GetAchievements(ctx context.Context, request api.GetAchie
 	if err == nil && len(cache.AchievementsJson) > 0 {
 		var achievements []api.Achievement
 		if err := json.Unmarshal(cache.AchievementsJson, &achievements); err == nil && len(achievements) > 0 {
+			if s.cacheSvc != nil {
+				s.cacheSvc.Set(ctx, cacheKey, achievements, 30*time.Minute)
+			}
 			return api.GetAchievements200JSONResponse(achievements), nil
 		}
 	}
@@ -223,10 +263,22 @@ func (s *RecapService) GetAchievements(ctx context.Context, request api.GetAchie
 	metrics := CalculateUserMetrics(actRecords)
 	achievements := EvaluateAchievements(metrics)
 
+	if s.cacheSvc != nil {
+		s.cacheSvc.Set(ctx, cacheKey, achievements, 30*time.Minute)
+	}
+
 	return api.GetAchievements200JSONResponse(achievements), nil
 }
 
 func (s *RecapService) GetShareCard(ctx context.Context, request api.GetShareCardRequestObject) (api.GetShareCardResponseObject, error) {
+	cacheKey := fmt.Sprintf("avitohack:share:%s", request.ShareToken)
+	if s.cacheSvc != nil {
+		var cachedResp api.GetShareCard200JSONResponse
+		if s.cacheSvc.Get(ctx, cacheKey, &cachedResp) {
+			return cachedResp, nil
+		}
+	}
+
 	if s.queries == nil {
 		return nil, fmt.Errorf("database connection unavailable")
 	}
@@ -272,19 +324,33 @@ func (s *RecapService) GetShareCard(ctx context.Context, request api.GetShareCar
 		}
 	}
 
-	return api.GetShareCard200JSONResponse{
+	resp := api.GetShareCard200JSONResponse{
 		FullName:        user.FullName,
 		AvatarUrl:       user.AvatarUrl,
 		Archetype:       cache.Archetype,
 		AiTitle:         cache.AiTitle,
 		TopCategory:     metrics.TopCategory,
 		TopAchievements: topAchs,
-	}, nil
+	}
+
+	if s.cacheSvc != nil {
+		s.cacheSvc.Set(ctx, cacheKey, resp, 1*time.Hour)
+	}
+
+	return resp, nil
 }
 
 // Admin Endpoints Implementation
 
 func (s *RecapService) GetAdminUsers(ctx context.Context, request api.GetAdminUsersRequestObject) (api.GetAdminUsersResponseObject, error) {
+	cacheKey := "avitohack:admin:users"
+	if s.cacheSvc != nil {
+		var cachedItems []api.AdminUserItem
+		if s.cacheSvc.Get(ctx, cacheKey, &cachedItems) {
+			return api.GetAdminUsers200JSONResponse(cachedItems), nil
+		}
+	}
+
 	if s.queries == nil {
 		return nil, fmt.Errorf("database connection unavailable")
 	}
@@ -322,6 +388,10 @@ func (s *RecapService) GetAdminUsers(ctx context.Context, request api.GetAdminUs
 		})
 	}
 
+	if s.cacheSvc != nil {
+		s.cacheSvc.Set(ctx, cacheKey, items, 5*time.Minute)
+	}
+
 	return api.GetAdminUsers200JSONResponse(items), nil
 }
 
@@ -338,6 +408,16 @@ func (s *RecapService) TriggerGenerate(ctx context.Context, request api.TriggerG
 		force = *request.Body.ForceRegenerate
 	}
 
+	if s.cacheSvc != nil {
+		s.cacheSvc.Delete(ctx, "avitohack:admin:users")
+		for _, uID := range request.Body.UserIds {
+			s.cacheSvc.Delete(ctx,
+				fmt.Sprintf("avitohack:recap:profile:%d", uID),
+				fmt.Sprintf("avitohack:achievements:profile:%d", uID),
+			)
+		}
+	}
+
 	queuedCount := 0
 	for _, uID := range request.Body.UserIds {
 		err := s.queueSvc.EnqueueTask(uID, force)
@@ -346,7 +426,7 @@ func (s *RecapService) TriggerGenerate(ctx context.Context, request api.TriggerG
 		} else {
 			queuedCount++
 			if s.wsHub != nil {
-				s.wsHub.BroadcastEvent(uID, "QUEUED", "Зачачу отправлено в очередь RabbitMQ")
+				s.wsHub.BroadcastEvent(uID, "QUEUED", "Задачу отправлено в очередь RabbitMQ")
 			}
 		}
 	}
@@ -545,11 +625,43 @@ func (s *RecapService) GenerateAndStoreRecapForUser(ctx context.Context, userID 
 		return fmt.Errorf("failed to save recap to DB: %w", err)
 	}
 
+	if s.cacheSvc != nil {
+		s.cacheSvc.Delete(ctx,
+			fmt.Sprintf("avitohack:recap:profile:%d", userID),
+			fmt.Sprintf("avitohack:achievements:profile:%d", userID),
+			fmt.Sprintf("avitohack:share:%s", shareToken),
+			"avitohack:admin:users",
+			"avitohack:profiles:all",
+		)
+	}
+
 	if s.wsHub != nil {
 		s.wsHub.BroadcastEvent(userID, "COMPLETED", "Карточка и достижения успешно сохранены 🟢")
 	}
 
 	return nil
+}
+
+func (s *RecapService) FlushCache(ctx context.Context, request api.FlushCacheRequestObject) (api.FlushCacheResponseObject, error) {
+	if s.cacheSvc == nil || !s.cacheSvc.IsAvailable() {
+		msg := "Redis cache unavailable"
+		status := "warning"
+		return api.FlushCache200JSONResponse{
+			Status:  &status,
+			Message: &msg,
+		}, nil
+	}
+
+	if err := s.cacheSvc.FlushAll(ctx); err != nil {
+		return nil, fmt.Errorf("failed to flush cache: %w", err)
+	}
+
+	msg := "All Redis keys flushed successfully"
+	status := "ok"
+	return api.FlushCache200JSONResponse{
+		Status:  &status,
+		Message: &msg,
+	}, nil
 }
 
 func generateShareToken(userID int32) string {

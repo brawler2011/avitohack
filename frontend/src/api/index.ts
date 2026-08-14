@@ -11,6 +11,10 @@ export { OpenAPI } from './core/OpenAPI';
 export type { OpenAPIConfig } from './core/OpenAPI';
 
 export type { Achievement } from './models/Achievement';
+export type { AdminUserItem } from './models/AdminUserItem';
+export type { GenerateRecapRequest } from './models/GenerateRecapRequest';
+export type { GenerateRecapResponse } from './models/GenerateRecapResponse';
+export type { PIIPreviewResponse } from './models/PIIPreviewResponse';
 export type { RecapCard } from './models/RecapCard';
 export type { RecapResponse } from './models/RecapResponse';
 export type { ShareCard } from './models/ShareCard';

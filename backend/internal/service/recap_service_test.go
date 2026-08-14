@@ -70,3 +70,9 @@ func TestGenerateShareToken_Uniqueness(t *testing.T) {
 		seenTokens[token] = id
 	}
 }
+
+func TestNewRecapService_NilCache(t *testing.T) {
+	t.Parallel()
+	svc := NewRecapService(nil, nil, nil, nil, nil)
+	assert.NotNil(t, svc)
+}

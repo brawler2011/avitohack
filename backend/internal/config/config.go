@@ -12,6 +12,7 @@ type Config struct {
 	Port              string
 	DatabaseURL       string
 	RabbitMQURL       string
+	RedisURL          string
 	CSVUsersPath      string
 	CSVActivitiesPath string
 	OpenRouterAPIKey  string
@@ -55,6 +56,11 @@ func Load() *Config {
 		rabbitURL = "amqp://guest:guest@localhost:5672/"
 	}
 
+	redisURL := strings.TrimSpace(os.Getenv("REDIS_URL"))
+	if redisURL == "" {
+		redisURL = "redis://localhost:6379"
+	}
+
 	csvUsers := strings.TrimSpace(os.Getenv("CSV_USERS_PATH"))
 	if csvUsers == "" {
 		csvUsers = "../data/users.csv"
@@ -75,6 +81,7 @@ func Load() *Config {
 		Port:              port,
 		DatabaseURL:       dbURL,
 		RabbitMQURL:       rabbitURL,
+		RedisURL:          redisURL,
 		CSVUsersPath:      csvUsers,
 		CSVActivitiesPath: csvActivities,
 		OpenRouterAPIKey:  openRouterKey,

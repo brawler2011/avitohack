@@ -3,6 +3,10 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { Achievement } from '../models/Achievement';
+import type { AdminUserItem } from '../models/AdminUserItem';
+import type { GenerateRecapRequest } from '../models/GenerateRecapRequest';
+import type { GenerateRecapResponse } from '../models/GenerateRecapResponse';
+import type { PIIPreviewResponse } from '../models/PIIPreviewResponse';
 import type { RecapResponse } from '../models/RecapResponse';
 import type { ShareCard } from '../models/ShareCard';
 import type { UserProfile } from '../models/UserProfile';
@@ -76,6 +80,66 @@ export class DefaultService {
             path: {
                 'shareToken': shareToken,
             },
+        });
+    }
+    /**
+     * Get list of users with recap status for admin dashboard
+     * @returns AdminUserItem List of user profiles with generation status
+     * @throws ApiError
+     */
+    public getAdminUsers(): CancelablePromise<Array<AdminUserItem>> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/api/v1/admin/users',
+        });
+    }
+    /**
+     * Enqueue batch AI generation tasks via RabbitMQ
+     * @returns GenerateRecapResponse Tasks queued successfully
+     * @throws ApiError
+     */
+    public triggerGenerate({
+        requestBody,
+    }: {
+        requestBody: GenerateRecapRequest,
+    }): CancelablePromise<GenerateRecapResponse> {
+        return this.httpRequest.request({
+            method: 'POST',
+            url: '/api/v1/admin/generate',
+            body: requestBody,
+            mediaType: 'application/json',
+        });
+    }
+    /**
+     * Get PII-masked prompt preview and profile data for LLM inspection
+     * @returns PIIPreviewResponse PII preview payload
+     * @throws ApiError
+     */
+    public getPiiPreview({
+        profileId,
+    }: {
+        profileId: number,
+    }): CancelablePromise<PIIPreviewResponse> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/api/v1/admin/preview/{profileId}',
+            path: {
+                'profileId': profileId,
+            },
+        });
+    }
+    /**
+     * Flush all cached items in Redis
+     * @returns any Cache flushed successfully
+     * @throws ApiError
+     */
+    public flushCache(): CancelablePromise<{
+        status?: string;
+        message?: string;
+    }> {
+        return this.httpRequest.request({
+            method: 'POST',
+            url: '/api/v1/admin/cache/flush',
         });
     }
 }

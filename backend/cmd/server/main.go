@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/avitohack/backend/internal/cache"
 	"github.com/avitohack/backend/internal/config"
 	"github.com/avitohack/backend/internal/db"
 	"github.com/avitohack/backend/internal/queue"
@@ -77,6 +78,15 @@ func main() {
 		}
 	}
 
+	// Initialize Redis Cache Service
+	cacheSvc, err := cache.NewRedisCacheService(cfg.RedisURL)
+	if err != nil {
+		slog.Warn("Redis connection warning (running without Redis cache)", slog.Any("error", err))
+	} else {
+		slog.Info("Connected to Redis successfully!")
+		defer cacheSvc.Close()
+	}
+
 	llmGen := service.NewLLMGenerator(cfg.OpenRouterAPIKey, cfg.OpenRouterModel)
 	if llmGen.IsAvailable() {
 		slog.Info("ProxyAPI LLM generator initialized", slog.String("model", cfg.OpenRouterModel))
@@ -96,8 +106,8 @@ func main() {
 		defer queueSvc.Close()
 	}
 
-	// Initialize RecapService
-	recapSvc := service.NewRecapService(queries, llmGen, queueSvc, wsHub)
+	// Initialize RecapService with Redis cache
+	recapSvc := service.NewRecapService(queries, llmGen, queueSvc, wsHub, cacheSvc)
 
 	// Start 3 worker goroutines for processing tasks from RabbitMQ
 	if queueSvc != nil {

@@ -127,6 +127,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/PIIPreviewResponse'
 
+  /api/v1/admin/cache/flush:
+    post:
+      summary: Flush all cached items in Redis
+      operationId: flushCache
+      responses:
+        '200':
+          description: Cache flushed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
+
 components:
   schemas:
     UserProfile:

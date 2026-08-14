@@ -13,9 +13,30 @@ import { AvitoMainFeed } from "./components/AvitoMainFeed";
 import { ExplanationModal } from "./components/ExplanationModal";
 import { ShareCardModal } from "./components/ShareCardModal";
 import { CTASimulationModal } from "./components/CTASimulationModal";
+import { PublicShareCardPage } from "./components/PublicShareCardPage";
 import { Loader2 } from "lucide-react";
 import { RecapReveal } from "./components/recap/RecapReveal";
 import { RecapOnboarding } from "./components/RecapOnboarding";
+
+const getShareTokenFromUrl = (): string | null => {
+  const hash = window.location.hash;
+  if (hash.includes("share=")) {
+    const match = hash.match(/share=([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) return match[1];
+  }
+  if (hash.includes("/share/")) {
+    const parts = hash.split("/share/");
+    if (parts[1]) return parts[1].split("&")[0].split("?")[0];
+  }
+
+  const pathname = window.location.pathname;
+  if (pathname.startsWith("/share/")) {
+    const parts = pathname.split("/share/");
+    if (parts[1]) return parts[1].split("/")[0];
+  }
+
+  return null;
+};
 
 const ONBOARDING_SEEN_KEY = "recap-onboarding-seen-profiles";
 const RECAP_VIEWED_KEY = "recap-viewed-profiles";
@@ -46,6 +67,7 @@ const addStoredProfileId = (key: string, profileId: number) => {
 };
 
 export const App: React.FC = () => {
+  const [publicShareToken, setPublicShareToken] = useState<string | null>(getShareTokenFromUrl);
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<number>(1);
   const [recapData, setRecapData] = useState<RecapResponse | null>(null);
@@ -73,6 +95,27 @@ export const App: React.FC = () => {
     isOpen: boolean;
     url: string;
   }>({ isOpen: false, url: "" });
+
+  useEffect(() => {
+    const handleLocationChange = () => {
+      setPublicShareToken(getShareTokenFromUrl());
+    };
+
+    window.addEventListener("hashchange", handleLocationChange);
+    window.addEventListener("popstate", handleLocationChange);
+    return () => {
+      window.removeEventListener("hashchange", handleLocationChange);
+      window.removeEventListener("popstate", handleLocationChange);
+    };
+  }, []);
+
+  const handleGoHomeFromShare = () => {
+    window.location.hash = "";
+    if (window.location.pathname.startsWith("/share/")) {
+      window.history.pushState({}, "", "/");
+    }
+    setPublicShareToken(null);
+  };
 
   useEffect(() => {
     fetchProfiles()
@@ -191,6 +234,15 @@ export const App: React.FC = () => {
       setCtaModalData({ isOpen: true, url: action });
     }
   };
+
+  if (publicShareToken) {
+    return (
+      <PublicShareCardPage
+        shareToken={publicShareToken}
+        onGoHome={handleGoHomeFromShare}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f2f3f5] text-[#222222] flex flex-col font-sans">

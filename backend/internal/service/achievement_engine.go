@@ -32,7 +32,7 @@ func CalculateUserMetrics(activities []ActivityRecord) UserActivityResult {
 		Searches:        make([]string, 0),
 	}
 
-	var minResponseSpeed int = 999999
+	var minResponseSpeed = 999999
 	for _, act := range activities {
 		if act.Category != "" {
 			res.CategoriesMap[act.Category]++

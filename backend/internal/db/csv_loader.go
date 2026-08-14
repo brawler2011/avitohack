@@ -20,7 +20,7 @@ func LoadCSVData(ctx context.Context, transactor pg.Transactor, fallback sqlc.Qu
 	if err != nil {
 		return fmt.Errorf("failed to open users csv: %w", err)
 	}
-	defer usersFile.Close()
+	defer func() { _ = usersFile.Close() }()
 
 	uReader := csv.NewReader(usersFile)
 	uRecords, err := uReader.ReadAll()
@@ -64,7 +64,7 @@ func LoadCSVData(ctx context.Context, transactor pg.Transactor, fallback sqlc.Qu
 	if err != nil {
 		return fmt.Errorf("failed to open activities csv: %w", err)
 	}
-	defer actFile.Close()
+	defer func() { _ = actFile.Close() }()
 
 	aReader := csv.NewReader(actFile)
 	aRecords, err := aReader.ReadAll()

@@ -554,6 +554,6 @@ func (s *RecapService) GenerateAndStoreRecapForUser(ctx context.Context, userID 
 
 func generateShareToken(userID int32) string {
 	h := sha256.New()
-	h.Write([]byte(fmt.Sprintf("avito_share_%d_salt_2024", userID)))
+	_, _ = fmt.Fprintf(h, "avito_share_%d_salt_2024", userID)
 	return hex.EncodeToString(h.Sum(nil))[:16]
 }

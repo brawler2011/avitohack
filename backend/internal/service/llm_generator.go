@@ -316,7 +316,7 @@ func (g *LLMGenerator) callGeminiAPI(ctx context.Context, systemPrompt, userProm
 
 		if attempt < maxAttempts {
 			if resp != nil {
-				resp.Body.Close()
+				_ = resp.Body.Close()
 			}
 			time.Sleep(1 * time.Second)
 		}
@@ -325,7 +325,7 @@ func (g *LLMGenerator) callGeminiAPI(ctx context.Context, systemPrompt, userProm
 	if lastErr != nil {
 		return "", fmt.Errorf("proxyapi gemini call failed: %w", lastErr)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -387,7 +387,7 @@ func (g *LLMGenerator) callOpenAIAPI(ctx context.Context, systemPrompt, userProm
 
 		if attempt < maxAttempts {
 			if resp != nil {
-				resp.Body.Close()
+				_ = resp.Body.Close()
 			}
 			time.Sleep(1 * time.Second)
 		}
@@ -396,7 +396,7 @@ func (g *LLMGenerator) callOpenAIAPI(ctx context.Context, systemPrompt, userProm
 	if lastErr != nil {
 		return "", fmt.Errorf("proxyapi api call failed: %w", lastErr)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {

@@ -45,7 +45,7 @@ func (qs *QueueService) connect() error {
 
 	ch, err := conn.Channel()
 	if err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return fmt.Errorf("failed to open channel: %w", err)
 	}
 
@@ -58,8 +58,8 @@ func (qs *QueueService) connect() error {
 		nil,       // arguments
 	)
 	if err != nil {
-		ch.Close()
-		conn.Close()
+		_ = ch.Close()
+		_ = conn.Close()
 		return fmt.Errorf("failed to declare queue: %w", err)
 	}
 

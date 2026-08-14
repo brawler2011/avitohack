@@ -53,7 +53,7 @@ func (h *Hub) Run() {
 			h.mu.Lock()
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
-				client.Close()
+				_ = client.Close()
 				slog.Info("WebSocket client disconnected", slog.String("remote_addr", client.RemoteAddr().String()))
 			}
 			h.mu.Unlock()
@@ -64,7 +64,7 @@ func (h *Hub) Run() {
 				err := client.WriteJSON(msg)
 				if err != nil {
 					slog.Warn("WebSocket write failed, closing connection", slog.Any("error", err))
-					client.Close()
+					_ = client.Close()
 					delete(h.clients, client)
 				}
 			}

@@ -62,11 +62,11 @@ func main() {
 		slog.Info("Connected to PostgreSQL successfully!")
 		queries = sqlc.New(dbPool)
 
-		// Load seed data from CSV
-		if err := db.LoadCSVData(context.Background(), queries, cfg.CSVUsersPath, cfg.CSVActivitiesPath); err != nil {
+		// Load seed data from CSV inside database transactions
+		if err := db.LoadCSVData(context.Background(), dbPool, queries, cfg.CSVUsersPath, cfg.CSVActivitiesPath); err != nil {
 			slog.Warn("CSV loading error", slog.Any("error", err))
 		} else {
-			slog.Info("CSV seed data loaded into DB successfully!")
+			slog.Info("CSV seed data loaded into DB successfully via transactions!")
 		}
 	}
 
